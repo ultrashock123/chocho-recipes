@@ -1,7 +1,7 @@
-/* Рецептите на Чочо — personal recipe book (PWA, no build step). */
+/* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 // Bump when recipes.json changes so installed apps pick up the corrected recipes.
 const SEED_VERSION = 2;
 
@@ -39,8 +39,8 @@ const I18N = {
     tab_home: 'Рецепти', tab_categories: 'Категории', tab_favorites: 'Любими', tab_settings: 'Настройки',
     morning: 'Добро утро', day: 'Добър ден', evening: 'Добър вечер',
     home_title: 'Какво ще готвим?', search_ph: 'Търси рецепта, продукт…',
-    all: 'Всички', surprise: 'Изненадай ме', surprise_sub: 'Случайна рецепта за днес',
-    tried_rail: 'Изпробвани от мен', recent_rail: 'Последно добавени', all_recipes: 'Всички рецепти',
+    all: 'Всички', surprise: 'Рулетка на вкуса', surprise_sub: 'Завърти — късметът избира днешната рецепта',
+    tried_rail: 'Изпробвани рецепти', recent_rail: 'Последно добавени', all_recipes: 'Всички рецепти',
     results: n => `${n} ${n === 1 ? 'рецепта' : 'рецепти'}`, recipes_n: n => `${n} ${n === 1 ? 'рецепта' : 'рецепти'}`,
     no_results: 'Нищо не намерих', no_results_sub: 'Опитай с друга дума или махни филтрите.',
     clear_filters: 'Изчисти филтрите', see_all: 'Виж всички',
@@ -62,7 +62,7 @@ const I18N = {
     f_time: 'Време', f_time_ph: 'напр. 45 мин', f_servings: 'Порции', f_servings_ph: 'напр. 4',
     f_tried: 'Изпробвана от мен', need_title: 'Въведи име на рецептата',
     photo_err: 'Снимката не можа да се зареди',
-    settings: 'Настройки', profile: 'Профил', your_name: 'Твоето име', personal: 'Лична книга с рецепти',
+    settings: 'Настройки', profile: 'Профил', your_name: 'Твоето име', personal: 'Rifay Umami · книга с рецепти',
     st_recipes: 'рецепти', st_fav: 'любими', st_tried: 'изпробвани',
     appearance: 'Изглед', theme: 'Тема', th_auto: 'Авто', th_light: 'Светла', th_dark: 'Тъмна',
     text_size: 'Големина на текста', size_preview: 'Така ще изглежда текстът в рецептите.',
@@ -74,12 +74,24 @@ const I18N = {
     change_photo: 'Смени снимката', remove_photo: 'Премахни снимката', sort: 'Подреди',
     sort_az: 'По азбучен ред', sort_new: 'Най-нови първо', sort_tried: 'Изпробваните първо',
     servings: 'порции', install_hint: 'За да го инсталираш: Safari → Сподели → „Добави към началния екран“.',
+    roulette_title: 'Рулетка на вкуса', roulette_sub: 'Завърти и съдбата избира какво ще готвиш',
+    spin: 'Завърти', spin_again: 'Завърти пак', open_recipe: 'Към рецептата', roulette_pool: 'От какво да избира?',
+    roulette_win: 'Днес готвиш…', roulette_empty: 'Няма рецепти в тази категория',
+    video: 'Видео', play_video: 'Пусни видеото',
+    add_how: 'Как да добавим рецептата?', add_manual: '✍️ Ръчно', add_ai: '✨ С AI — опиши я с думи', add_ai_photo: '📷 С AI — от снимка на рецепта',
+    ai_title: 'Рецепта с AI', ai_hint: 'Разкажи рецептата както би я обяснил на приятел — продукти, количества, как се прави. Можеш да диктуваш с микрофона на клавиатурата 🎤.',
+    ai_ph: 'напр. Взимам 4 пилешки бутчета, мариновам ги с кисело мляко, чесън, къри и малко кетчуп за 2 часа, после ги пека на 200 градуса около 40 минути…',
+    ai_photo: 'Снимка на рецепта (по желание)', ai_go: '✨ Направи рецептата', ai_working: 'AI пише рецептата…',
+    ai_need_code: 'Въведи AI кода за достъп в Настройки → AI', ai_err: 'AI не успя. Опитай пак.',
+    ai_bad_code: 'Грешен AI код за достъп', ai_not_configured: 'AI още не е настроен на сървъра (липсва API ключ).',
+    ai_need_input: 'Напиши нещо или добави снимка', ai_section: 'AI помощник', ai_code: 'Код за достъп до AI',
+    ai_code_hint: 'Кодът се задава в Netlify (APP_ACCESS_CODE). Пази бюджета ти — без него AI функциите не работят.',
   },
   en: {
     tab_home: 'Recipes', tab_categories: 'Categories', tab_favorites: 'Favorites', tab_settings: 'Settings',
     morning: 'Good morning', day: 'Good afternoon', evening: 'Good evening',
     home_title: "What's cooking?", search_ph: 'Search recipes, ingredients…',
-    all: 'All', surprise: 'Surprise me', surprise_sub: 'A random recipe for today',
+    all: 'All', surprise: 'Flavor roulette', surprise_sub: "Spin — luck picks today's recipe",
     tried_rail: 'Tried & tested', recent_rail: 'Recently added', all_recipes: 'All recipes',
     results: n => `${n} recipe${n === 1 ? '' : 's'}`, recipes_n: n => `${n} recipe${n === 1 ? '' : 's'}`,
     no_results: 'Nothing found', no_results_sub: 'Try another word or clear the filters.',
@@ -102,7 +114,7 @@ const I18N = {
     f_time: 'Time', f_time_ph: 'e.g. 45 min', f_servings: 'Servings', f_servings_ph: 'e.g. 4',
     f_tried: 'Tried it myself', need_title: 'Please enter a recipe name',
     photo_err: 'Could not load the photo',
-    settings: 'Settings', profile: 'Profile', your_name: 'Your name', personal: 'Personal recipe book',
+    settings: 'Settings', profile: 'Profile', your_name: 'Your name', personal: 'Rifay Umami · recipe book',
     st_recipes: 'recipes', st_fav: 'favorites', st_tried: 'tried',
     appearance: 'Appearance', theme: 'Theme', th_auto: 'Auto', th_light: 'Light', th_dark: 'Dark',
     text_size: 'Text size', size_preview: 'This is how recipe text will look.',
@@ -114,6 +126,18 @@ const I18N = {
     change_photo: 'Change photo', remove_photo: 'Remove photo', sort: 'Sort',
     sort_az: 'Alphabetical', sort_new: 'Newest first', sort_tried: 'Tried first',
     servings: 'servings', install_hint: 'To install: Safari → Share → “Add to Home Screen”.',
+    roulette_title: 'Flavor roulette', roulette_sub: 'Spin and let fate pick what you cook',
+    spin: 'Spin', spin_again: 'Spin again', open_recipe: 'Open recipe', roulette_pool: 'Pick from…',
+    roulette_win: "Today you're cooking…", roulette_empty: 'No recipes in this category',
+    video: 'Video', play_video: 'Play video',
+    add_how: 'How do you want to add it?', add_manual: '✍️ Manually', add_ai: '✨ With AI — describe it in words', add_ai_photo: '📷 With AI — from a recipe photo',
+    ai_title: 'Recipe with AI', ai_hint: 'Tell the recipe like you would to a friend — ingredients, amounts, how to make it. You can dictate with the keyboard mic 🎤.',
+    ai_ph: 'e.g. I take 4 chicken thighs, marinate them in yogurt, garlic, curry and a little ketchup for 2 hours, then roast at 200°C for about 40 minutes…',
+    ai_photo: 'Photo of a recipe (optional)', ai_go: '✨ Create recipe', ai_working: 'AI is writing the recipe…',
+    ai_need_code: 'Enter the AI access code in Settings → AI', ai_err: 'AI failed. Try again.',
+    ai_bad_code: 'Wrong AI access code', ai_not_configured: 'AI is not set up on the server yet (missing API key).',
+    ai_need_input: 'Write something or add a photo', ai_section: 'AI assistant', ai_code: 'AI access code',
+    ai_code_hint: 'The code is set in Netlify (APP_ACCESS_CODE). It protects your budget — AI features need it.',
   },
 };
 
@@ -154,7 +178,7 @@ function toast(msg) {
 
 /* ---------------- Settings ---------------- */
 const settings = Object.assign(
-  { theme: 'auto', scale: 1, lang: 'bg', name: 'Чочо', avatar: null, sort: 'az' },
+  { theme: 'auto', scale: 1, lang: 'bg', name: '', avatar: null, sort: 'az', aiCode: '' },
   (() => { try { return JSON.parse(localStorage.getItem('chocho.settings') || '{}'); } catch (e) { return {}; } })()
 );
 function saveSettings() { try { localStorage.setItem('chocho.settings', JSON.stringify(settings)); } catch (e) {} }
@@ -412,9 +436,12 @@ function greeting() {
   return t(h < 11 ? 'morning' : h < 18 ? 'day' : 'evening');
 }
 function avatarHTML() {
-  const initial = esc((settings.name || 'Ч').trim().charAt(0).toUpperCase());
-  return `<span class="avatar">${settings.avatar ? imgTag(settings.avatar, '', false) : initial}</span>`;
+  if (settings.avatar) return `<span class="avatar">${imgTag(settings.avatar, '', false)}</span>`;
+  const name = (settings.name || '').trim();
+  if (name) return `<span class="avatar">${esc(name.charAt(0).toUpperCase())}</span>`;
+  return `<span class="avatar avatar-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4.1-6 7.5-6s6.3 2 7.5 6"/></svg></span>`;
 }
+const brandHTML = () => `<div class="brand"><img src="icons/logo.svg" alt="" class="brand-mark"><span>Rifay <b>Umami</b></span></div>`;
 
 /* ---------------- Tabs ---------------- */
 function renderTab() {
@@ -452,7 +479,7 @@ function homeView() {
   if (!filtering) {
     const tried = state.recipes.filter(r => r.tried && (r.images || []).length);
     const recent = [...state.recipes].sort((a, b) => b.createdAt - a.createdAt).filter(r => !r.seed).slice(0, 10);
-    body += `<button class="surprise" data-action="surprise"><span class="dice">🎲</span><span><b>${esc(t('surprise'))}</b><span>${esc(t('surprise_sub'))}</span></span></button>`;
+    body += `<button class="surprise" data-action="roulette"><span class="wheel-mini">${miniWheelSVG()}</span><span><b>${esc(t('surprise'))}</b><span>${esc(t('surprise_sub'))}</span></span><span class="go">${I.ext}</span></button>`;
     if (recent.length) body += `<div class="section-head"><h2>${esc(t('recent_rail'))}</h2></div><div class="rail">${recent.map(card).join('')}</div>`;
     if (tried.length) body += `<div class="section-head"><h2>${esc(t('tried_rail'))} ✓</h2></div><div class="rail">${shuffle(tried).slice(0, 12).map(card).join('')}</div>`;
     body += `<div class="section-head"><h2>${esc(t('all_recipes'))}</h2>
@@ -467,9 +494,10 @@ function homeView() {
 
   return `<section class="view home">
     <div class="topbar">
-      <div><div class="greeting">${esc(greeting())}, ${esc(settings.name || '')} 👋</div></div>
+      ${brandHTML()}
       <button data-tab-go="settings" aria-label="Profile">${avatarHTML()}</button>
     </div>
+    <div class="greeting" style="margin-top:14px">${esc(greeting())} 👋</div>
     <h1 class="large-title">${esc(t('home_title'))}</h1>
     <div class="search">
       <div class="search-inner">
@@ -562,6 +590,12 @@ function settingsView() {
 
     <div class="group-label">${esc(t('language'))}</div>
     <div class="group"><div class="seg-row">${seg('lang', [['bg', '🇧🇬 Български'], ['en', '🇬🇧 English']])}</div></div>
+
+    <div class="group-label">✨ ${esc(t('ai_section'))}</div>
+    <div class="group">
+      <input class="field" id="ai-code" type="password" autocomplete="off" autocapitalize="off" placeholder="${esc(t('ai_code'))}" value="${esc(settings.aiCode || '')}">
+    </div>
+    <p class="hint">${esc(t('ai_code_hint'))}</p>
 
     <div class="group-label">${esc(t('data'))}</div>
     <div class="group">
@@ -685,10 +719,45 @@ function detailHTML(r, tabSel = 'ing') {
       <div data-dpane="ing" class="${tabSel === 'ing' ? '' : 'hidden'}">${ingHTML}</div>
       <div data-dpane="method" class="${tabSel === 'method' ? '' : 'hidden'}">${stepsHTML}</div>
       ${r.notes ? `<div class="notes-box"><h4>📝 ${esc(t('notes'))}</h4><div class="prose">${linkify(esc(r.notes))}</div></div>` : ''}
-      ${(r.links || []).length ? `<h3 class="block-title">${esc(t('links'))}</h3><div class="links">${r.links.map(linkCard).join('')}</div>` : ''}
+      ${videosHTML(r)}
+      ${otherLinks(r).length ? `<h3 class="block-title">${esc(t('links'))}</h3><div class="links">${otherLinks(r).map(linkCard).join('')}</div>` : ''}
     </div>
   </div>`;
 }
+/* ----- YouTube ----- */
+function youtubeInfo(url) {
+  let u;
+  try { u = new URL(url); } catch (e) { return null; }
+  const host = u.hostname.replace(/^(www|m)\./, '');
+  let id = null;
+  if (host === 'youtu.be') id = u.pathname.slice(1).split('/')[0];
+  else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    id = u.searchParams.get('v') || (u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/) || [])[1];
+  }
+  if (!id || !/^[\w-]{11}$/.test(id)) return null;
+  const tm = (u.searchParams.get('t') || u.searchParams.get('start') || '').match(/^(?:(\d+)h)?(?:(\d+)m)?(\d+)s?$/);
+  const start = tm ? (+(tm[1] || 0)) * 3600 + (+(tm[2] || 0)) * 60 + (+tm[3] || 0) : 0;
+  return { id, start };
+}
+const otherLinks = r => (r.links || []).filter(l => !youtubeInfo(l.url));
+function videosHTML(r) {
+  const vids = (r.links || []).map(l => youtubeInfo(l.url)).filter(Boolean);
+  if (!vids.length) return '';
+  return `<h3 class="block-title">▶️ ${esc(t('video'))}</h3>${vids.map(v => `
+    <button class="yt" data-yt="${v.id}" data-start="${v.start}" aria-label="${esc(t('play_video'))}"
+      style="background-image:url('https://i.ytimg.com/vi/${v.id}/hqdefault.jpg')">
+      <span class="yt-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg></span>
+    </button>`).join('')}`;
+}
+function playYouTube(btn) {
+  const { yt, start } = btn.dataset;
+  const wrap = document.createElement('div');
+  wrap.className = 'yt';
+  wrap.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&playsinline=1&rel=0${+start ? `&start=${start}` : ''}"
+    title="YouTube" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+  btn.replaceWith(wrap);
+}
+
 function linkify(s) { return s.replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length > 40 ? u.slice(0, 40) + '…' : u}</a>`); }
 function linkCard(l) {
   const url = l.url || '';
@@ -804,7 +873,7 @@ function linkRow(l, i) {
     <button class="rm" data-rm-link="${i}" aria-label="Remove">${I.x}</button></div>`;
 }
 
-function openEditor(existing) {
+function openEditor(existing, prefill = null) {
   const isNew = !existing;
   const d = existing ? JSON.parse(JSON.stringify({
     title: existing.title, images: existing.images || [], categories: existing.categories || [], collection: existing.collection,
@@ -813,6 +882,7 @@ function openEditor(existing) {
   })) : {
     title: '', images: [], categories: state.cat ? [state.cat] : [], collection: 'mine', ingredients: [], steps: '', notes: '',
     links: [], tried: false, time: '', servings: '',
+    ...(prefill || {}),
   };
   const added = [];      // photos stored during this edit session
   const removed = [];    // photos to delete on save
@@ -905,6 +975,244 @@ function openEditor(existing) {
       await removeRecipe(existing);
       popPage();
       setTimeout(() => { popPage(); renderTab(); toast(t('deleted')); }, 120);
+    }
+  });
+}
+
+/* ---------------- Flavor roulette ---------------- */
+const WHEEL_N = 8;
+const WHEEL_COLORS = ['#FF8A3D', '#E8552F', '#FFB547', '#C93A2E', '#FF9F5A', '#D9472B', '#F7C45A', '#B8322A'];
+const polar = (deg, r) => { const a = deg * Math.PI / 180; return [r * Math.sin(a), -r * Math.cos(a)]; };
+
+function miniWheelSVG() {
+  const seg = 360 / WHEEL_N;
+  return `<svg viewBox="-50 -50 100 100">${WHEEL_COLORS.map((c, i) => {
+    const [x0, y0] = polar(i * seg, 48), [x1, y1] = polar((i + 1) * seg, 48);
+    return `<path d="M0 0L${x0} ${y0}A48 48 0 0 1 ${x1} ${y1}Z" fill="${i % 2 ? '#fff' : 'rgba(255,255,255,.55)'}"/>`;
+  }).join('')}<circle r="10" fill="#E8552F" stroke="#fff" stroke-width="4"/></svg>`;
+}
+
+function wheelSVG(items) {
+  const seg = 360 / items.length;
+  const slices = items.map((r, i) => {
+    const [x0, y0] = polar(i * seg, 98), [x1, y1] = polar((i + 1) * seg, 98);
+    const mid = i * seg + seg / 2;
+    const [ex, ey] = polar(mid, 66);
+    const emoji = (CAT[(r.categories || [])[0]] || CAT.other).emoji;
+    return `<path d="M0 0L${x0.toFixed(2)} ${y0.toFixed(2)}A98 98 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}Z" fill="${WHEEL_COLORS[i % WHEEL_COLORS.length]}" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/>
+      <text x="${ex.toFixed(2)}" y="${ey.toFixed(2)}" font-size="20" text-anchor="middle" dominant-baseline="central" transform="rotate(${mid} ${ex.toFixed(2)} ${ey.toFixed(2)})">${emoji}</text>`;
+  }).join('');
+  const studs = Array.from({ length: items.length * 2 }, (_, i) => {
+    const [x, y] = polar(i * seg / 2, 103);
+    return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="2.2" fill="#fff"/>`;
+  }).join('');
+  return `<svg viewBox="-110 -110 220 220" class="wheel-svg"><circle r="108" fill="#2A1712"/>${studs}<g>${slices}</g><circle r="24" fill="#fff"/></svg>`;
+}
+
+function openRoulette() {
+  let poolCat = state.cat || null;
+  let items = [];
+  let rotation = 0;
+  let spinning = false;
+  const counts = {};
+  state.recipes.forEach(r => (r.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
+
+  const pickItems = () => {
+    const pool = state.recipes.filter(r => !poolCat || (r.categories || []).includes(poolCat));
+    const withImg = shuffle(pool.filter(r => (r.images || []).length));
+    const rest = shuffle(pool.filter(r => !(r.images || []).length));
+    items = [...withImg, ...rest].slice(0, WHEEL_N);
+    while (items.length && items.length < WHEEL_N) items = items.concat(items).slice(0, WHEEL_N);
+  };
+  pickItems();
+
+  const el = pushPage(`<div class="navbar">
+      <button class="nav-btn" data-action="back">${esc(t('cancel'))}</button>
+      <h1>🎰 ${esc(t('roulette_title'))}</h1><span style="width:60px"></span>
+    </div>
+    <div class="roulette">
+      <p class="muted center">${esc(t('roulette_sub'))}</p>
+      <div class="group-label">${esc(t('roulette_pool'))}</div>
+      <div class="chips" id="rl-cats">
+        <button class="chip small ${!poolCat ? 'active' : ''}" data-rl-cat="">${esc(t('all'))}</button>
+        ${CATEGORIES.filter(c => counts[c.id] >= 2).map(c => `<button class="chip small ${poolCat === c.id ? 'active' : ''}" data-rl-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])}</button>`).join('')}
+      </div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer"></div>
+        <div class="wheel" id="rl-wheel"></div>
+        <button class="wheel-hub" id="rl-spin">${esc(t('spin'))}</button>
+      </div>
+      <div class="ticker" id="rl-ticker">&nbsp;</div>
+      <div id="rl-result"></div>
+    </div>`, { modal: true });
+
+  const wheel = $('#rl-wheel', el), ticker = $('#rl-ticker', el), result = $('#rl-result', el);
+  const drawWheel = () => {
+    wheel.style.transition = 'none';
+    wheel.style.transform = `rotate(${rotation}deg)`;
+    wheel.innerHTML = items.length ? wheelSVG(items) : `<div class="empty">${esc(t('roulette_empty'))}</div>`;
+    result.innerHTML = '';
+    ticker.innerHTML = '&nbsp;';
+  };
+  drawWheel();
+
+  const indexAt = rot => {
+    const seg = 360 / items.length;
+    return Math.floor((((360 - (rot % 360)) % 360) + 360) % 360 / seg) % items.length;
+  };
+
+  const spin = () => {
+    if (spinning || !items.length) return;
+    spinning = true;
+    result.innerHTML = '';
+    el.querySelector('#rl-spin').disabled = true;
+    const seg = 360 / items.length;
+    const win = Math.floor(Math.random() * items.length);
+    const center = win * seg + seg / 2;
+    const jitter = (Math.random() - 0.5) * seg * 0.6;
+    const base = rotation + 360 * (5 + Math.floor(Math.random() * 3));
+    const target = base + ((360 - center - (base % 360)) % 360 + 360) % 360 + jitter;
+    const duration = 4600;
+    wheel.style.transition = `transform ${duration}ms cubic-bezier(.12,.72,.08,1)`;
+    wheel.style.transform = `rotate(${target}deg)`;
+
+    let last = -1;
+    const tick = () => {
+      if (!spinning) return;
+      const m = getComputedStyle(wheel).transform;
+      if (m && m !== 'none') {
+        const [a, b] = m.slice(7, -1).split(',').map(Number);
+        const deg = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
+        const i = indexAt(deg);
+        if (i !== last) { last = i; ticker.textContent = items[i].title; haptic(); }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+
+    setTimeout(() => {
+      spinning = false;
+      rotation = target;
+      const r = items[indexAt(target)];
+      ticker.textContent = '';
+      el.querySelector('#rl-spin').disabled = false;
+      const cover = (r.images || [])[0];
+      result.innerHTML = `<div class="win-card">
+        <div class="win-label">🎉 ${esc(t('roulette_win'))}</div>
+        <div class="win-thumb">${cover ? imgTag(cover, '', false) : placeholder(r)}</div>
+        <h2>${esc(r.title)}</h2>
+        <div class="win-actions">
+          <button class="btn primary" data-rl-open="${esc(r.id)}">${esc(t('open_recipe'))}</button>
+          <button class="btn" data-rl-again>${esc(t('spin_again'))}</button>
+        </div></div>${confettiHTML()}`;
+      hydratePhotos(result);
+      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, duration + 80);
+  };
+
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'rl-spin' || b.hasAttribute('data-rl-again')) { spin(); return; }
+    if (b.dataset.rlOpen) { const id = b.dataset.rlOpen; popPage(); setTimeout(() => openRecipe(id), 280); return; }
+    if (b.dataset.rlCat !== undefined) {
+      if (spinning) return;
+      poolCat = b.dataset.rlCat || null;
+      el.querySelectorAll('[data-rl-cat]').forEach(x => x.classList.toggle('active', x === b));
+      pickItems(); drawWheel();
+    }
+  });
+}
+function confettiHTML() {
+  const bits = ['🍅', '🧄', '🌶️', '🍋', '🌿', '🧀', '✨', '🥕'];
+  return `<div class="confetti" aria-hidden="true">${Array.from({ length: 18 }, (_, i) =>
+    `<i style="--x:${Math.round(Math.random() * 100)}%;--d:${(0.9 + Math.random() * 0.9).toFixed(2)}s;--r:${Math.round(Math.random() * 720 - 360)}deg">${bits[i % bits.length]}</i>`).join('')}</div>`;
+}
+
+/* ---------------- AI recipe input ---------------- */
+const AI_ERRORS = { bad_access_code: 'ai_bad_code', not_configured: 'ai_not_configured' };
+async function askAddMode() {
+  const v = await actionSheet(t('add_how'), [
+    { label: t('add_ai'), value: 'ai' },
+    { label: t('add_ai_photo'), value: 'ai-photo' },
+    { label: t('add_manual'), value: 'manual' },
+  ]);
+  if (v === 'manual') openEditor(null);
+  else if (v) openAIComposer(v === 'ai-photo');
+}
+
+function openAIComposer(withPhoto) {
+  let image = null; // { media_type, data, url }
+  const el = pushPage(`<div class="navbar">
+      <button class="nav-btn" data-action="back">${esc(t('cancel'))}</button>
+      <h1>✨ ${esc(t('ai_title'))}</h1><span style="width:60px"></span>
+    </div>
+    <div class="form">
+      <p class="muted" style="margin:10px 4px 14px">${esc(t('ai_hint'))}</p>
+      <div class="group"><textarea class="field" id="ai-text" rows="9" placeholder="${esc(t('ai_ph'))}"></textarea></div>
+      <div class="group-label">${esc(t('ai_photo'))}</div>
+      <div class="group">
+        <div id="ai-photo"></div>
+        <div class="photo-add" style="padding-top:14px">
+          <button class="btn" data-ai-photo="camera">${I.camera} ${esc(t('camera'))}</button>
+          <button class="btn" data-ai-photo="gallery">${I.image} ${esc(t('gallery'))}</button>
+        </div>
+      </div>
+      <div style="margin-top:22px"><button class="btn primary ai-go" id="ai-go">${esc(t('ai_go'))}</button></div>
+    </div>`, { modal: true });
+
+  const setPhoto = () => {
+    $('#ai-photo', el).innerHTML = image ? `<div class="photo-strip"><div class="photo-tile"><img src="${image.url}" alt="">
+      <button class="x" data-ai-rm aria-label="Remove">${I.x}</button></div></div>` : '';
+  };
+  const addPhoto = async kind => {
+    const [f] = await pickFiles(kind);
+    if (!f) return;
+    try {
+      const blob = await compressImage(f, 1568, 0.85);
+      const data = (await blobToDataURL(blob)).split(',')[1];
+      image = { media_type: 'image/jpeg', data, url: URL.createObjectURL(blob) };
+      setPhoto();
+    } catch (err) { toast(t('photo_err')); }
+  };
+  if (withPhoto) setTimeout(() => addPhoto('gallery'), 350); else setTimeout(() => $('#ai-text', el).focus(), 350);
+
+  el.addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.aiPhoto) { addPhoto(b.dataset.aiPhoto); return; }
+    if (b.hasAttribute('data-ai-rm')) { image = null; setPhoto(); return; }
+    if (b.id !== 'ai-go') return;
+    const text = $('#ai-text', el).value.trim();
+    if (!text && !image) { toast(t('ai_need_input')); return; }
+    if (!settings.aiCode) { toast(t('ai_need_code')); return; }
+    b.disabled = true;
+    b.innerHTML = `<span class="spinner"></span> ${esc(t('ai_working'))}`;
+    try {
+      const res = await fetch('/api/parse-recipe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-access-code': settings.aiCode },
+        body: JSON.stringify({ text, image: image && { media_type: image.media_type, data: image.data } }),
+      });
+      const raw = (await res.text()).trim();
+      let out = {};
+      try { out = JSON.parse(raw); } catch (err) { out = { error: 'bad_response' }; }
+      if (!out.recipe) throw new Error(out.error || 'ai_error');
+      const r = out.recipe;
+      popPage();
+      setTimeout(() => openEditor(null, {
+        title: r.title || '',
+        ingredients: r.ingredients || [],
+        steps: (r.steps || []).join('\n\n'),
+        notes: r.notes || '',
+        categories: (r.categories || []).filter(c => CAT[c]),
+        time: r.time || '',
+        servings: r.servings || '',
+      }), 280);
+    } catch (err) {
+      toast(t(AI_ERRORS[err.message] || 'ai_err'));
+      b.disabled = false;
+      b.textContent = t('ai_go');
     }
   });
 }
@@ -1030,6 +1338,8 @@ function bindEvents() {
     }
     const ing = e.target.closest('[data-ing]');
     if (ing) { ing.classList.toggle('done'); haptic(); return; }
+    const yt = e.target.closest('button[data-yt]');
+    if (yt) { playYouTube(yt); return; }
 
     const a = e.target.closest('[data-action]');
     if (!a) return;
@@ -1037,7 +1347,8 @@ function bindEvents() {
     const detail = a.closest('.detail');
     const r = detail ? byId(detail.dataset.id) : null;
     switch (act) {
-      case 'new-recipe': openEditor(null); break;
+      case 'new-recipe': askAddMode(); break;
+      case 'roulette': openRoulette(); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
       case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; renderTab(); break;
@@ -1128,6 +1439,7 @@ function bindEvents() {
       settings.scale = SCALES[Number(e.target.value)]; saveSettings(); applyAppearance();
     }
     if (e.target.id === 'profile-name') { settings.name = e.target.value; saveSettings(); }
+    if (e.target.id === 'ai-code') { settings.aiCode = e.target.value.trim(); saveSettings(); }
   });
   document.addEventListener('keydown', e => {
     if (e.target.id === 'q' && e.key === 'Enter') e.target.blur();

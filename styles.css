@@ -136,7 +136,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   background: radial-gradient(120% 140% at 0% 0%, #FF9A4D 0%, #E8552F 45%, #B8322A 100%);
   box-shadow: 0 12px 30px rgba(232, 85, 47, .32);
 }
-.surprise .dice { font-size: 34px; line-height: 1; }
 .surprise b { display: block; font-size: 1.08rem; }
 .surprise span { opacity: .88; font-size: .88rem; }
 
@@ -403,6 +402,67 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .as-btn { display: block; width: 100%; height: 56px; font-size: 1.08rem; color: var(--accent); border-top: .5px solid var(--line); }
 .as-btn.danger { color: var(--danger); }
 .as-btn.cancel { margin-top: 8px; border-radius: 16px; background: var(--bg-elev); font-weight: 700; border: 0; }
+
+/* ---------- Brand ---------- */
+.brand { display: flex; align-items: center; gap: 10px; font-size: 1.18rem; font-weight: 700; letter-spacing: -.02em; }
+.brand-mark { width: 34px; height: 34px; border-radius: 10px; box-shadow: 0 4px 12px rgba(232, 85, 47, .35); }
+.brand b { color: var(--accent); font-weight: 800; }
+.avatar-empty { background: var(--fill-strong); color: var(--text-2); box-shadow: none; }
+.avatar-empty svg { width: 55%; height: 55%; }
+.center { text-align: center; }
+
+/* ---------- Roulette ---------- */
+.surprise .wheel-mini { width: 44px; height: 44px; flex: none; animation: idleSpin 9s linear infinite; }
+.surprise .wheel-mini svg { width: 100%; height: 100%; }
+.surprise > span:nth-child(2) { flex: 1; }
+.surprise .go svg { width: 20px; height: 20px; opacity: .85; }
+@keyframes idleSpin { to { transform: rotate(360deg); } }
+
+.roulette { padding: 8px 16px calc(var(--safe-bottom) + 40px); max-width: 560px; margin: 0 auto; }
+.roulette .chips { margin-bottom: 8px; }
+.wheel-wrap { position: relative; width: min(84vw, 360px); aspect-ratio: 1; margin: 18px auto 6px; }
+.wheel { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 18px 50px rgba(150, 40, 20, .35); will-change: transform; }
+.wheel-svg { width: 100%; height: 100%; }
+.wheel-pointer {
+  position: absolute; top: -10px; left: 50%; z-index: 2; transform: translateX(-50%);
+  width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
+  border-top: 30px solid var(--text); filter: drop-shadow(0 3px 4px rgba(0,0,0,.3));
+}
+.wheel-hub {
+  position: absolute; inset: 0; margin: auto; width: 25%; height: 25%; border-radius: 50%; z-index: 2;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; font-weight: 800; font-size: .9rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,.3), inset 0 0 0 4px rgba(255,255,255,.85); transition: transform .15s;
+}
+.wheel-hub:active { transform: scale(.92); }
+.wheel-hub:disabled { opacity: .85; }
+.ticker { min-height: 2.6em; margin-top: 10px; text-align: center; font-weight: 700; font-size: 1.05rem; color: var(--text-2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.win-card { position: relative; background: var(--bg-elev); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 16px; text-align: center; animation: pop .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes pop { from { transform: scale(.7); opacity: 0; } }
+.win-label { font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+.win-thumb { aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; background: var(--bg-sunken); }
+.win-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.win-card h2 { font-size: 1.3rem; letter-spacing: -.02em; margin: 12px 0 14px; }
+.win-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 40; }
+.confetti i { position: absolute; top: -40px; left: var(--x); font-style: normal; font-size: 24px; animation: fall var(--d) ease-in forwards; }
+@keyframes fall { to { transform: translateY(105vh) rotate(var(--r)); opacity: .2; } }
+
+/* ---------- YouTube ---------- */
+.yt {
+  position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; margin-bottom: 10px;
+  background: #000 center / cover no-repeat; box-shadow: var(--shadow);
+}
+.yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.yt-play {
+  position: absolute; inset: 0; margin: auto; width: 68px; height: 48px; border-radius: 14px; display: grid; place-items: center;
+  background: rgba(255, 0, 0, .92); color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+}
+.yt-play svg { width: 26px; height: 26px; }
+
+/* ---------- AI ---------- */
+.ai-go { height: 54px; font-size: 1.02rem; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; animation: idleSpin .8s linear infinite; }
 
 /* ---------- Toast ---------- */
 #toast {

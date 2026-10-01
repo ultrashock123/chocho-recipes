@@ -1,7 +1,7 @@
 {
-  "name": "Rifay Recipes Manager",
-  "short_name": "Rifay Recipes Manager",
-  "description": "Лична книга с рецепти на шеф Чочо Рифай",
+  "name": "Rifay Umami",
+  "short_name": "Rifay Umami",
+  "description": "Rifay Umami — книга с рецепти",
   "lang": "bg",
   "start_url": "./",
   "scope": "./",

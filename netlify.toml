@@ -1,6 +1,10 @@
 [build]
   publish = "."
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # Service worker must always be revalidated so app updates reach the phone.
 [[headers]]
   for = "/sw.js"
