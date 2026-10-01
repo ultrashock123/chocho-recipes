@@ -1,6 +1,6 @@
 {
-  "name": "Рецептите на Чочо",
-  "short_name": "Рецепти",
+  "name": "Rifay Recipes Manager",
+  "short_name": "Rifay Recipes Manager",
   "description": "Лична книга с рецепти на шеф Чочо Рифай",
   "lang": "bg",
   "start_url": "./",
