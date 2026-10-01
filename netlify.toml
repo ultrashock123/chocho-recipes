@@ -1,0 +1,8 @@
+[build]
+  publish = "."
+
+# Service worker must always be revalidated so app updates reach the phone.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
