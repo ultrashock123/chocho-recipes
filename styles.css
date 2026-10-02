@@ -655,3 +655,19 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .user-head { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 0 14px; }
 .user-head h2 { margin: 0; font-size: 1.4rem; letter-spacing: -.02em; }
 .avatar.big { width: 84px; height: 84px; font-size: 34px; }
+
+/* ---------- Home KPI ---------- */
+.hero-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-top: 14px; }
+.hero-text { min-width: 0; }
+.hero-text .large-title { margin-bottom: 14px; }
+.kpi {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 84px; padding: 10px 16px 11px; margin-bottom: 14px;
+  border-radius: 20px; text-align: center; color: #fff; cursor: pointer;
+  background: radial-gradient(130% 150% at 0% 0%, var(--accent-2) 0%, var(--accent) 55%, #B8322A 100%);
+  box-shadow: 0 10px 24px rgba(232, 85, 47, .32); transition: transform .15s;
+}
+.kpi:active { transform: scale(.96); }
+.kpi b { font-size: 1.9rem; line-height: 1; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.kpi span { margin-top: 3px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .92; }
+.kpi small { margin-top: 5px; padding: 2px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(255,255,255,.22); }
+@media (min-width: 900px) { .kpi { min-width: 110px; padding: 14px 22px 15px; } .kpi b { font-size: 2.6rem; } .kpi span { font-size: .78rem; } .kpi small { font-size: .78rem; } }

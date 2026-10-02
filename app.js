@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.7.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,7 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    kpi_mine: 'твои',
     timer_test_toast: '🔔 Проба на алармата — ако не чуваш, увеличи звука на телефона',
     top_title: 'Топ рецепти',
     rating_none: 'Още няма оценки', rating_votes: n => `${n} ${n === 1 ? 'оценка' : 'оценки'}`, your_rating: 'Твоята оценка',
@@ -216,6 +217,7 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    kpi_mine: 'yours',
     timer_test_toast: '🔔 Alarm test — if you hear nothing, turn the phone volume up',
     top_title: 'Top recipes',
     rating_none: 'No ratings yet', rating_votes: n => `${n} rating${n === 1 ? '' : 's'}`, your_rating: 'Your rating',
@@ -758,8 +760,16 @@ function homeView() {
         ? `<button class="btn-login" data-action="login">${esc(t('login'))}</button>`
         : `<button data-tab-go="settings" aria-label="Profile">${avatarHTML()}</button>`}
     </div>
-    <div class="greeting" style="margin-top:14px">${esc(greeting())} 👋</div>
-    <h1 class="large-title">${esc(t('home_title'))}</h1>
+    <div class="hero-row">
+      <div class="hero-text">
+        <div class="greeting">${esc(greeting())} 👋</div>
+        <h1 class="large-title">${esc(t('home_title'))}</h1>
+      </div>
+      <button class="kpi" data-action="clear-filters" aria-label="${esc(t('all_recipes'))}">
+        <b>${state.recipes.length}</b><span>${esc(t('st_recipes'))}</span>
+        ${auth.mode !== 'guest' && mineCount ? `<small>👤 ${mineCount} ${esc(t('kpi_mine'))}</small>` : ''}
+      </button>
+    </div>
     <div class="search">
       <div class="search-inner">
         <label class="search-field">${I.search}
