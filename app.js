@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -110,6 +110,7 @@ const I18N = {
     make_public: 'Направи публична', make_private: 'Направи лична', by_author: n => `от ${n}`,
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
+    send_user: 'Изпрати',
     scope_mine: 'Мои рецепти', scope_shared: 'Споделени с мен', mine_sub: 'Всичко, което си добавил', shared_sub: 'Изпратени от други',
     share_menu: 'Изпрати на потребител', share_title: 'Изпрати рецепта', share_search_ph: 'Търси потребител по име…',
     share_hint: 'Получателят ще вижда рецептата (дори да е лична), но не може да я променя. Намират се само потребители, които са разрешили името им да се вижда.',
@@ -194,6 +195,7 @@ const I18N = {
     make_public: 'Make public', make_private: 'Make private', by_author: n => `by ${n}`,
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
+    send_user: 'Send',
     scope_mine: 'My recipes', scope_shared: 'Shared with me', mine_sub: 'Everything you added', shared_sub: 'Sent by others',
     share_menu: 'Send to a user', share_title: 'Send recipe', share_search_ph: 'Search user by name…',
     share_hint: 'The recipient can see the recipe (even if private) but cannot change it. Only users who allow their name to be shown can be found.',
@@ -224,6 +226,7 @@ const I = {
   ext: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   sort: '<svg viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>',
+  send: '<svg viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3l-6.5 18-3.5-7.5L3.5 10z"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
 };
 
@@ -904,6 +907,7 @@ function detailHTML(r, tabSel = 'ing') {
         <button class="qa ${r.tried ? 'on' : ''}" data-action="toggle-tried">${I.check}<span>${esc(t('tried'))}</span></button>
         <button class="qa" data-action="cook">${I.flame}<span>${esc(t('cook'))}</span></button>
         <button class="qa" data-action="share">${I.share}<span>${esc(t('share'))}</span></button>
+        ${isMine(r) && auth.mode === 'user' ? `<button class="qa" data-action="send-user">${I.send}<span>${esc(t('send_user'))}</span></button>` : ''}
       </div>
       <div class="segmented">
         <button class="${tabSel === 'ing' ? 'active' : ''}" data-dtab="ing">${esc(t('ingredients'))}${hasIng ? ` · ${r.ingredients.filter(x => !isSub(x)).length}` : ''}</button>
@@ -1561,6 +1565,7 @@ function bindEvents() {
     switch (act) {
       case 'new-recipe': if (canWrite()) askAddMode(); else promptLogin(); break;
       case 'login': openAuth({ view: 'signin' }); break;
+      case 'send-user': if (r) openSharePage(r); break;
       case 'save-name': {
         const name = ($('#display-name').value || '').trim();
         if (!name) { toast(t('need_title')); break; }
