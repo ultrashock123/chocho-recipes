@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.6.3';
+const APP_VERSION = '1.7.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,8 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    timer_test_toast: '🔔 Проба на алармата — ако не чуваш, увеличи звука на телефона',
+    top_title: 'Топ рецепти',
     rating_none: 'Още няма оценки', rating_votes: n => `${n} ${n === 1 ? 'оценка' : 'оценки'}`, your_rating: 'Твоята оценка',
     rate_own: 'Не можеш да оценяваш своя рецепта', rate_self: 'Не можеш да оценяваш себе си', rate_thanks: 'Благодарим за оценката ★', rate_removed: 'Оценката е премахната',
     score_exc: 'Изключително', score_top: 'Отлично', score_vgood: 'Много добро', score_good: 'Добро', score_ok: 'Задоволително', score_bad: 'Слабо',
@@ -214,6 +216,8 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    timer_test_toast: '🔔 Alarm test — if you hear nothing, turn the phone volume up',
+    top_title: 'Top recipes',
     rating_none: 'No ratings yet', rating_votes: n => `${n} rating${n === 1 ? '' : 's'}`, your_rating: 'Your rating',
     rate_own: 'You cannot rate your own recipe', rate_self: 'You cannot rate yourself', rate_thanks: 'Thanks for rating ★', rate_removed: 'Rating removed',
     score_exc: 'Exceptional', score_top: 'Superb', score_vgood: 'Very good', score_good: 'Good', score_ok: 'Okay', score_bad: 'Poor',
@@ -669,7 +673,7 @@ function sorted(list) {
   const s = settings.sort;
   const a = [...list];
   if (s === 'new') a.sort((x, y) => y.createdAt - x.createdAt);
-  else if (s === 'rating') { const sc = r => (statOf('recipe', r.id) || { avg: 0 }).avg, cn = r => (statOf('recipe', r.id) || { count: 0 }).count; a.sort((x, y) => (sc(y) - sc(x)) || (cn(y) - cn(x)) || x.title.localeCompare(y.title, 'bg')); }
+  else if (s === 'rating') a.sort((x, y) => ((weightedScore(y) ?? -1) - (weightedScore(x) ?? -1)) || x.title.localeCompare(y.title, 'bg'));
   else if (s === 'tried') a.sort((x, y) => (y.tried - x.tried) || x.title.localeCompare(y.title, 'bg'));
   else a.sort((x, y) => x.title.localeCompare(y.title, 'bg'));
   return a;
@@ -704,6 +708,7 @@ function filtered() {
   let list = state.recipes;
   if (state.scope === 'mine') list = list.filter(isMine);
   else if (state.scope === 'shared') list = list.filter(r => r.sharedWithMe);
+  else if (state.scope === 'top') { const top = new Set(topRecipes().map(r => r.id)); list = list.filter(r => top.has(r.id)); }
   if (state.cat) list = list.filter(r => (r.categories || []).includes(state.cat));
   if (state.coll) list = list.filter(r => r.collection === state.coll);
   const q = state.query.trim();
@@ -712,6 +717,7 @@ function filtered() {
     return list.map(r => [r, searchScore(r, terms)]).filter(x => x[1] > 0)
       .sort((a, b) => b[1] - a[1] || a[0].title.localeCompare(b[0].title, 'bg')).map(x => x[0]);
   }
+  if (state.scope === 'top') return [...list].sort((a, b) => weightedScore(b) - weightedScore(a) || a.title.localeCompare(b.title, 'bg'));
   return sorted(list);
 }
 
@@ -724,12 +730,15 @@ function homeView() {
   const list = filtered();
   const mineCount = state.recipes.filter(isMine).length;
   const sharedCount = state.recipes.filter(r => r.sharedWithMe).length;
+  const topCount = ratingsOn() ? topRecipes().length : 0;
 
   let body = '';
   if (!filtering) {
     const tried = state.recipes.filter(r => r.tried && (r.images || []).length);
     const recent = [...state.recipes].sort((a, b) => b.createdAt - a.createdAt).filter(r => !r.seed).slice(0, 10);
     body += `<button class="surprise" data-action="roulette"><span class="wheel-mini">${miniWheelSVG()}</span><span><b>${esc(t('surprise'))}</b><span>${esc(t('surprise_sub'))}</span></span><span class="go">${I.ext}</span></button>`;
+    const topList = ratingsOn() ? topRecipes().slice(0, 10) : [];
+    if (topList.length) body += `<div class="section-head"><h2>🏆 ${esc(t('top_title'))}</h2><button class="link" data-go-scope="top">${esc(t('see_all'))} ›</button></div><div class="rail">${topList.map(card).join('')}</div>`;
     if (recent.length) body += `<div class="section-head"><h2>${esc(t('recent_rail'))}</h2></div><div class="rail">${recent.map(card).join('')}</div>`;
     if (tried.length) body += `<div class="section-head"><h2>${esc(t('tried_rail'))} ✓</h2></div><div class="rail">${shuffle(tried).slice(0, 12).map(card).join('')}</div>`;
     body += `<div class="section-head"><h2>${esc(t('all_recipes'))}</h2>
@@ -763,6 +772,7 @@ function homeView() {
     <div class="chips seg">
       <button class="chip small ${!state.coll && state.scope === 'all' ? 'active' : ''}" data-coll="">${esc(t('all'))}</button>
       ${auth.mode !== 'guest' ? `<button class="chip small ${state.scope === 'mine' ? 'active' : ''}" data-scope="mine">👤 ${esc(t('scope_mine'))} <span class="count">${mineCount}</span></button>` : ''}
+      ${topCount ? `<button class="chip small ${state.scope === 'top' ? 'active' : ''}" data-scope="top">🏆 ${esc(t('top_title'))} <span class="count">${topCount}</span></button>` : ''}
       ${sharedCount ? `<button class="chip small ${state.scope === 'shared' ? 'active' : ''}" data-scope="shared">📥 ${esc(t('scope_shared'))} <span class="count">${sharedCount}</span></button>` : ''}
       ${COLLECTIONS.filter(c => collCounts[c.id]).map(c => `<button class="chip small ${state.coll === c.id ? 'active' : ''}" data-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${collCounts[c.id]}</span></button>`).join('')}
     </div>
@@ -796,6 +806,8 @@ function categoriesView() {
     <div class="tiles">
       ${auth.mode !== 'guest' ? `<button class="tile tile-mine" style="--h:14" data-go-scope="mine">
         <b>${esc(t('scope_mine'))}</b><span>${esc(t('recipes_n', state.recipes.filter(isMine).length))}</span><div class="emo">👤</div></button>` : ''}
+      ${ratingsOn() && topRecipes().length ? `<button class="tile" style="--h:45" data-go-scope="top">
+        <b>${esc(t('top_title'))}</b><span>${esc(t('recipes_n', topRecipes().length))}</span><div class="emo">🏆</div></button>` : ''}
       ${state.recipes.some(r => r.sharedWithMe) ? `<button class="tile" style="--h:210" data-go-scope="shared">
         <b>${esc(t('scope_shared'))}</b><span>${esc(t('recipes_n', state.recipes.filter(r => r.sharedWithMe).length))}</span><div class="emo">📥</div></button>` : ''}
       ${COLLECTIONS.filter(c => collCounts[c.id]).map((c, i) => `<button class="tile" style="--h:${[20, 280, 38, 160][i]}" data-go-coll="${c.id}">
@@ -956,6 +968,7 @@ function cookBarHTML() {
       <span class="cook-time" data-timer-display>0:00</span>
       <button class="round" data-timer="toggle" data-timer-toggle aria-label="Start / pause">▶</button>
       <button class="round" data-timer="reset" data-timer-reset aria-label="Reset">↺</button>
+      <button class="round" data-timer="test" aria-label="Test sound" title="Test sound">🔔</button>
       <button class="round wide" data-timer="add" aria-label="+1 min">+1'</button>
     </div>
     <div class="cook-presets">${[5, 10, 15, 20, 30, 45, 60].map(m => `<button class="chip small" data-timer-set="${m}">${m}'</button>`).join('')}
@@ -1965,18 +1978,90 @@ function saveTimer() { try { localStorage.setItem(TIMER_KEY, JSON.stringify({ en
 function loadTimer() { try { Object.assign(timer, JSON.parse(localStorage.getItem(TIMER_KEY) || '{}')); } catch (e) {} }
 const timerLeft = () => timer.running ? Math.max(0, timer.endAt - Date.now()) : timer.paused;
 const fmtTime = ms => { const s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
+// A pleasant bell chime (rising G-B-D-G arpeggio, soft overtones, gentle decay) generated as a WAV file.
+// It is played through a normal <audio> element: on iPhone that keeps sounding with the silent switch on,
+// unlike the Web Audio API.
+let alarmAudio = null, fallbackTimer = null;
+function buildAlarmWav() {
+  const rate = 22050, secs = 3.4, n = Math.floor(rate * secs);
+  const mix = new Float32Array(n);
+  const notes = [[783.99, 0], [987.77, 0.3], [1174.66, 0.6], [1567.98, 0.9]];
+  const partials = [[1, 1], [2, 0.32], [3, 0.12], [4.2, 0.05]];
+  for (const [f, t0] of notes) {
+    const start = Math.floor(t0 * rate);
+    for (let i = 0; start + i < n; i++) {
+      const tt = i / rate, env = Math.min(1, tt / 0.006) * Math.exp(-tt * 2.8);
+      if (tt > 0.05 && env < 0.0008) break; // (env is 0 at t=0 because of the attack ramp)
+      let s = 0;
+      for (const [m, a] of partials) s += a * Math.sin(2 * Math.PI * f * m * tt);
+      mix[start + i] += s * env * 0.34;
+    }
+  }
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, mix[i])) * 32767, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function getAlarmAudio() {
+  if (!alarmAudio) { alarmAudio = new Audio(buildAlarmWav()); alarmAudio.preload = 'auto'; alarmAudio.loop = true; }
+  return alarmAudio;
+}
+// Must run inside a tap: browsers only let a page play sound later if it was "unlocked" by a user gesture.
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
   } catch (e) {}
+  try {
+    const a = getAlarmAudio();
+    a.muted = true;
+    const p = a.play();
+    if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; });
+  } catch (e) {}
 }
 function beep(freq = 880, dur = 0.18, when = 0) {
   if (!audioCtx) return;
   const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + when;
-  o.type = 'square'; o.frequency.value = freq;
-  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.type = 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const vibrateAlarm = () => { try { navigator.vibrate && navigator.vibrate([450, 200, 450, 200, 450]); } catch (e) {} };
+function playAlarmSound(loop) {
+  const a = getAlarmAudio();
+  a.muted = false; a.loop = loop; a.volume = 1; a.currentTime = 0;
+  const p = a.play();
+  if (p && p.catch) p.catch(() => {
+    // Autoplay blocked: fall back to synthesized chimes
+    const chime = () => [784, 988, 1175, 1568].forEach((f, i) => beep(f, 0.5, i * 0.28));
+    chime(); if (loop) fallbackTimer = setInterval(chime, 3200);
+  });
+}
+function ring() {
+  if (timer.ringing) return;
+  timer.ringing = true;
+  playAlarmSound(true);
+  vibrateAlarm(); ringTimer = setInterval(vibrateAlarm, 3400);
+  $('#alarm-root').innerHTML = `<div class="alarm"><div class="alarm-card"><div class="alarm-bell">⏰</div><h2>${esc(t('timer_done'))}</h2>
+    <button class="btn primary" data-timer="stop">${esc(t('timer_stop'))}</button></div></div>`;
+  renderTimer();
+}
+function testAlarm() {
+  unlockAudio();
+  setTimeout(() => {
+    playAlarmSound(false); vibrateAlarm();
+    setTimeout(() => { if (!timer.ringing && alarmAudio) { alarmAudio.pause(); alarmAudio.currentTime = 0; alarmAudio.loop = true; } }, 2600);
+  }, 80);
+  toast(t('timer_test_toast'));
+}
+function stopAlarm() {
+  clearInterval(ringTimer); ringTimer = null; clearInterval(fallbackTimer); fallbackTimer = null; timer.ringing = false;
+  if (alarmAudio) { alarmAudio.pause(); alarmAudio.currentTime = 0; alarmAudio.loop = true; }
+  const a = $('#alarm-root'); if (a) a.innerHTML = '';
+  try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
 }
 function startTimer(ms) {
   unlockAudio();
@@ -1995,23 +2080,6 @@ function tickTimerFn() {
   if (timer.running && Date.now() >= timer.endAt) { timer.running = false; timer.paused = 0; timer.endAt = 0; saveTimer(); ring(); }
   renderTimer();
   if (!timer.running && !timer.ringing) clearInterval(tickTimer);
-}
-function ring() {
-  if (timer.ringing) return;
-  timer.ringing = true;
-  const pattern = () => {
-    [0, 0.25, 0.5].forEach(w => beep(988, 0.18, w));
-    try { navigator.vibrate && navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {}
-  };
-  pattern(); ringTimer = setInterval(pattern, 1600);
-  $('#alarm-root').innerHTML = `<div class="alarm"><div class="alarm-card"><div class="alarm-bell">⏰</div><h2>${esc(t('timer_done'))}</h2>
-    <button class="btn primary" data-timer="stop">${esc(t('timer_stop'))}</button></div></div>`;
-  renderTimer();
-}
-function stopAlarm() {
-  clearInterval(ringTimer); ringTimer = null; timer.ringing = false;
-  const a = $('#alarm-root'); if (a) a.innerHTML = '';
-  try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
 }
 function renderTimer() {
   const left = timerLeft(), active = timer.running || timer.paused > 0;
@@ -2032,6 +2100,7 @@ function handleTimerClick(b) {
     case 'reset': resetTimer(); break;
     case 'add': unlockAudio(); addTime(60000); break;
     case 'stop': stopAlarm(); break;
+    case 'test': testAlarm(); break;
     case 'custom': {
       const v = window.prompt(t('timer_custom_q'), '25');
       const m = parseFloat(String(v || '').replace(',', '.'));
@@ -2058,6 +2127,18 @@ const rkey = (type, id) => type + ':' + id;
 const statOf = (type, id) => ratingStats[rkey(type, id)] || null;
 const score10 = avg => Math.round(avg * 20) / 10; // 4.3 stars -> 8.6 / 10
 const fmtScore = avg => score10(avg).toFixed(1).replace('.', ',');
+// Ranking: a recipe with a few perfect votes must not beat one with many good votes, so the average is pulled
+// towards the overall average (Bayesian average, 3 "virtual" votes).
+function weightedScore(r) {
+  const st = statOf('recipe', r.id);
+  if (!st || !st.count) return null;
+  let sum = 0, n = 0;
+  for (const [k, v] of Object.entries(ratingStats)) if (k.startsWith('recipe:')) { sum += v.avg * v.count; n += v.count; }
+  const mean = n ? sum / n : 3.5, m = 3;
+  return (st.count / (st.count + m)) * st.avg + (m / (st.count + m)) * mean;
+}
+const topRecipes = () => state.recipes.filter(r => weightedScore(r) !== null)
+  .sort((a, b) => weightedScore(b) - weightedScore(a) || statOf('recipe', b.id).count - statOf('recipe', a.id).count || a.title.localeCompare(b.title, 'bg'));
 const scoreLabel = avg => { const s = score10(avg); return t(s >= 9 ? 'score_exc' : s >= 8 ? 'score_top' : s >= 7 ? 'score_vgood' : s >= 6 ? 'score_good' : s >= 5 ? 'score_ok' : 'score_bad'); };
 const ratingsOn = () => auth.mode !== 'local';
 function canRate(type, id) {
