@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,16 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    tab_chat: 'Чат', chat_title: 'Съобщения', chat_sub: 'Чат с приятели', chat_new: 'Ново', chat_empty: 'Още няма разговори',
+    chat_empty_sub: 'Добави приятели и им пиши — можеш да тагваш рецепти в съобщенията.', chat_you: 'Ти', chat_someone: 'Някой',
+    chat_recipe_missing: 'Рецептата не е достъпна за теб', chat_recipe_default: 'Виж тази рецепта', chat_back: 'Назад', chat_tag: 'Тагни рецепта',
+    chat_ph: 'Напиши съобщение…', chat_send: 'Изпрати', chat_say_hi: 'Поздрави приятеля си 👋', chat_pick_recipe: 'Избери рецепта',
+    chat_new_hint: 'Избери приятел или потърси по име. Ако го няма в приятелите, ще го добавим автоматично.', chat_msg: 'Съобщение', chat_delete: 'Изтрий съобщението',
+    chat_need_friend: 'Първо добави човека в приятели', chat_send_err: 'Съобщението не се изпрати. Опитай пак.',
+    chat_notif_title: 'Включи известията', chat_notif_hint: 'За да виждаш кога някой ти пише, дори когато приложението е във фонов режим.',
+    chat_notif_blocked: 'Известията са блокирани — разреши ги от настройките на браузъра/телефона.', chat_notif_on: 'Известията са включени 🔔',
+    chat_notif_denied: 'Известията не бяха разрешени', chat_notif_unsupported: 'Този браузър не поддържа известия', chat_discuss: 'Обсъди с приятел',
+    fav_only: 'Любими', fav_cooked: 'Сготвени', fav_cooked_empty: 'Още нямаш сготвени рецепти', fav_cooked_empty_sub: 'Натисни „Сготвих я“ в рецептата и тя ще се появи тук.',
     privacy: 'Поверителност', delete_data: 'Изтриване на данни',
     kpi_mine: 'твои',
     timer_test_toast: '🔔 Проба на алармата — ако не чуваш, увеличи звука на телефона',
@@ -218,6 +228,16 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    tab_chat: 'Chat', chat_title: 'Messages', chat_sub: 'Chat with friends', chat_new: 'New', chat_empty: 'No conversations yet',
+    chat_empty_sub: 'Add friends and write to them — you can tag recipes in your messages.', chat_you: 'You', chat_someone: 'Someone',
+    chat_recipe_missing: 'This recipe is not available to you', chat_recipe_default: 'Look at this recipe', chat_back: 'Back', chat_tag: 'Tag a recipe',
+    chat_ph: 'Write a message…', chat_send: 'Send', chat_say_hi: 'Say hi to your friend 👋', chat_pick_recipe: 'Pick a recipe',
+    chat_new_hint: 'Pick a friend or search by name. If they are not in your friends yet, we will add them.', chat_msg: 'Message', chat_delete: 'Delete message',
+    chat_need_friend: 'Add the person as a friend first', chat_send_err: 'The message was not sent. Try again.',
+    chat_notif_title: 'Turn on notifications', chat_notif_hint: 'See when someone writes to you, even when the app is in the background.',
+    chat_notif_blocked: 'Notifications are blocked — allow them in the browser/phone settings.', chat_notif_on: 'Notifications are on 🔔',
+    chat_notif_denied: 'Notifications were not allowed', chat_notif_unsupported: 'This browser does not support notifications', chat_discuss: 'Discuss with a friend',
+    fav_only: 'Favorites', fav_cooked: 'Cooked', fav_cooked_empty: 'No cooked recipes yet', fav_cooked_empty_sub: 'Tap “I cooked it” in a recipe and it will show up here.',
     privacy: 'Privacy', delete_data: 'Delete my data',
     kpi_mine: 'yours',
     timer_test_toast: '🔔 Alarm test — if you hear nothing, turn the phone volume up',
@@ -459,7 +479,8 @@ const state = {
   query: '',
   cat: null,
   coll: null,
-  scope: 'all', // 'all' | 'mine' | 'shared'
+  scope: 'all', // 'all' | 'mine' | 'shared' | 'top'
+  favFilter: 'all', // Favorites tab: 'all' | 'fav' | 'cooked'
   pages: [],
 };
 const byId = id => state.recipes.find(r => r.id === id);
@@ -529,6 +550,7 @@ async function loadUserData() {
     } else myRatings = {};
   }
   settingsView.localCount = auth.mode === 'user' ? (await localBackend.list()).length : 0;
+  if (auth.mode === 'user') startChat(); else stopChat();
   compose();
 }
 async function reloadAll() {
@@ -704,6 +726,7 @@ function renderTab() {
   if (state.tab === 'home') root.innerHTML = homeView();
   else if (state.tab === 'categories') root.innerHTML = categoriesView();
   else if (state.tab === 'favorites') root.innerHTML = favoritesView();
+  else if (state.tab === 'chat') root.innerHTML = chatView();
   else root.innerHTML = settingsView();
   hydratePhotos(root);
 }
@@ -829,12 +852,17 @@ function categoriesView() {
 }
 
 function favoritesView() {
-  const list = sorted(state.recipes.filter(r => r.favorite));
+  const favs = state.recipes.filter(r => r.favorite), cooked = state.recipes.filter(r => r.cooked > 0);
+  const f = state.favFilter || 'all';
+  const all = state.recipes.filter(r => r.favorite || r.cooked > 0);
+  const list = sorted(f === 'fav' ? favs : f === 'cooked' ? cooked : all);
+  const chip = (id, label, n) => `<button class="chip small ${f === id ? 'active' : ''}" data-fav-filter="${id}">${label} <span class="count">${n}</span></button>`;
   return `<section class="view">
     <div class="topbar"><div class="greeting">${esc(t('recipes_n', list.length))}</div></div>
     <h1 class="large-title">${esc(t('fav_title'))} ❤️</h1>
+    <div class="chips seg">${chip('all', esc(t('all')), all.length)}${chip('fav', '❤️ ' + esc(t('fav_only')), favs.length)}${chip('cooked', '🍳 ' + esc(t('fav_cooked')), cooked.length)}</div>
     ${list.length ? `<div class="grid">${list.map(card).join('')}</div>` :
-      `<div class="empty"><div class="big">🤍</div><h3>${esc(t('fav_empty'))}</h3><p>${esc(t('fav_empty_sub'))}</p></div>`}
+      `<div class="empty"><div class="big">${f === 'cooked' ? '🍳' : '🤍'}</div><h3>${esc(t(f === 'cooked' ? 'fav_cooked_empty' : 'fav_empty'))}</h3><p>${esc(t(f === 'cooked' ? 'fav_cooked_empty_sub' : 'fav_empty_sub'))}</p></div>`}
   </section>`;
 }
 
@@ -1694,6 +1722,8 @@ function bindEvents() {
     if (catBtn) { state.cat = catBtn.dataset.cat || null; renderTab(); return; }
     const collBtn = e.target.closest('[data-coll]');
     if (collBtn) { state.coll = collBtn.dataset.coll || null; if (!state.coll) state.scope = 'all'; renderTab(); return; }
+    const favF = e.target.closest('[data-fav-filter]');
+    if (favF) { state.favFilter = favF.dataset.favFilter; renderTab(); return; }
     const scopeBtn = e.target.closest('[data-scope]');
     if (scopeBtn) { state.scope = state.scope === scopeBtn.dataset.scope ? 'all' : scopeBtn.dataset.scope; renderTab(); return; }
     const goCat = e.target.closest('[data-go-cat]');
@@ -1819,9 +1849,11 @@ function bindEvents() {
           opts.push(r.visibility === 'private'
             ? { label: t('make_public'), value: 'public' } : { label: t('make_private'), value: 'private' });
         }
+        if (auth.mode === 'user' && canSend(r)) opts.push({ label: '💬 ' + t('chat_discuss'), value: 'chat' });
         const v = await actionSheet(r.title, opts);
         if (v === 'edit') openEditor(r);
         if (v === 'share') openSharePage(r);
+        if (v === 'chat') openNewChat(r.id);
         if (v === 'fork' || v === 'copy') {
           openEditor(null, Object.assign(JSON.parse(JSON.stringify(Object.fromEntries(RECIPE_FIELDS.map(k => [k, r[k]])))),
             { basedOn: v === 'fork' ? r.id : null, tried: r.tried, source: null }));
@@ -2232,11 +2264,12 @@ function openUserPage(u) {
 }
 
 /* ---------------- Send a recipe to another user / manage friends ---------------- */
-const personRow = (p, { fav, action, label, cls = '' }) => `<div class="person" data-uid="${esc(p.id)}">
+const personRow = (p, { fav, action, label, cls = '', chat = false }) => `<div class="person" data-uid="${esc(p.id)}">
   <button class="person-main" data-person="profile">
     <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
     <b>${esc(p.display_name || '')}</b>${(statOf('user', p.id) || {}).count ? `<span class="mini-score">${fmtScore(statOf('user', p.id).avg)}</span>` : ''}
   </button>
+  ${chat ? `<button class="star" data-person="chat" aria-label="Chat" title="Chat">💬</button>` : ''}
   ${fav === undefined ? '' : `<button class="star ${fav ? 'on' : ''}" data-person="star" aria-label="${esc(t('friend_toggle'))}" title="${esc(t('friend_toggle'))}">${fav ? '★' : '☆'}</button>`}
   ${action ? `<button class="btn ${cls}" style="width:auto;height:36px;padding:0 14px" data-person="${action}">${esc(label)}</button>` : ''}</div>`;
 
@@ -2263,7 +2296,7 @@ function openPeoplePage(r) {
   const known = id => friends.find(p => p.id === id) || found.find(p => p.id === id) || sent.find(p => p.id === id);
   const drawFriends = () => {
     $f.innerHTML = friends.length
-      ? friends.map(p => personRow(p, r && !sent.some(s => s.id === p.id) ? { fav: true, action: 'send', label: t('share_send'), cls: 'primary' } : { fav: true })).join('')
+      ? friends.map(p => personRow(p, r && !sent.some(s => s.id === p.id) ? { fav: true, chat: true, action: 'send', label: t('share_send'), cls: 'primary' } : { fav: true, chat: true })).join('')
       : `<p class="hint">${esc(t('friends_empty'))}</p>`;
     hydratePhotos($f);
   };
@@ -2296,6 +2329,7 @@ function openPeoplePage(r) {
     const b = e.target.closest('[data-person]');
     if (!b) return;
     const id = b.closest('.person').dataset.uid, p = known(id);
+    if (b.dataset.person === 'chat') { popPage(); setTimeout(() => openConversation(id, { recipeId: r ? r.id : null }), 280); return; }
     if (b.dataset.person === 'profile') { openUserPage({ id, name: p.display_name, avatar: p.avatar_url }); return; }
     try {
       if (b.dataset.person === 'star') {
@@ -2324,6 +2358,7 @@ async function promptLogin() {
   applyAppearance();
   bindEvents();
   bindAuthEvents();
+  bindChatEvents();
   initTimer();
   try { await initCloud(); await loadData(); }
   catch (e) {

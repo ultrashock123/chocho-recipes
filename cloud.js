@@ -184,6 +184,40 @@ const cloud = {
     const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id }, { ignoreDuplicates: true });
     if (error) throw error;
   },
+  // Chat (1-to-1 messages, optionally tagging a recipe).
+  async loadMessages() {
+    const me = auth.user.id;
+    const { data, error } = await sb.from('messages')
+      .select('id,sender_id,recipient_id,body,recipe_id,created_at,read_at')
+      .or(`sender_id.eq.${me},recipient_id.eq.${me}`).order('created_at', { ascending: false }).limit(600);
+    if (error) throw error;
+    return data || [];
+  },
+  async sendMessage(to, body, recipeId) {
+    const { data, error } = await sb.from('messages')
+      .insert({ sender_id: auth.user.id, recipient_id: to, body, recipe_id: recipeId || null }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  async markRead(partnerId) {
+    const { error } = await sb.from('messages').update({ read_at: new Date().toISOString() })
+      .eq('recipient_id', auth.user.id).eq('sender_id', partnerId).is('read_at', null);
+    if (error) throw error;
+  },
+  async deleteMessage(id) {
+    const { error } = await sb.from('messages').delete().eq('id', id).eq('sender_id', auth.user.id);
+    if (error) throw error;
+  },
+  chatChannel: null,
+  subscribeMessages(onInsert) {
+    this.unsubscribeMessages();
+    this.chatChannel = sb.channel('msgs-' + auth.user.id)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${auth.user.id}` }, p => onInsert(p.new))
+      .subscribe();
+  },
+  unsubscribeMessages() {
+    if (this.chatChannel) { try { sb.removeChannel(this.chatChannel); } catch (e) {} this.chatChannel = null; }
+  },
   // Ratings: public totals (view) + my own votes.
   async ratingStats() {
     const { data, error } = await sb.from('rating_stats').select('target_type,target_id,avg_stars,votes');

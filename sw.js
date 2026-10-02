@@ -1,9 +1,9 @@
 /* Offline support: app shell is precached, recipe photos are cached on first use
    and warmed in the background after install. */
-const VERSION = 'v1.8.0';
+const VERSION = 'v1.9.0';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'images-v1';
-const SHELL_FILES = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'config.js', 'recipes.json', 'manifest.webmanifest',
+const SHELL_FILES = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'chat.js', 'config.js', 'recipes.json', 'manifest.webmanifest',
   'icons/logo.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -47,4 +47,15 @@ self.addEventListener('fetch', e => {
     if (res.ok) caches.open(SHELL).then(c => c.put(e.request, res.clone()));
     return res;
   }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html'))));
+});
+
+// Tapping a chat notification focuses the app and opens that conversation.
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const partner = e.notification.data && e.notification.data.partner;
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (all[0]) { await all[0].focus(); all[0].postMessage({ type: 'open-chat', partner }); }
+    else await self.clients.openWindow('./');
+  })());
 });

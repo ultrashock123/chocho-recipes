@@ -256,3 +256,62 @@ create or replace view public.rating_stats as
   from public.ratings
   group by target_type, target_id;
 grant select on public.rating_stats to anon, authenticated;
+
+-- ═════════ v1.9: чат между потребители ═════════
+-- Лични съобщения 1 към 1, по желание с таг към рецепта. Пише се само на хора, които имаш в „Приятели",
+-- или на такива, които вече са ти писали (за да можеш да отговориш).
+create table if not exists public.messages (
+  id           uuid primary key default gen_random_uuid(),
+  sender_id    uuid not null references auth.users(id) on delete cascade,
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  body         text not null check (char_length(body) between 1 and 2000),
+  recipe_id    text,                                   -- таг към рецепта (по желание)
+  created_at   timestamptz not null default now(),
+  read_at      timestamptz,
+  check (sender_id <> recipient_id)
+);
+create index if not exists messages_recipient_idx on public.messages (recipient_id, created_at desc);
+create index if not exists messages_sender_idx    on public.messages (sender_id, created_at desc);
+alter table public.messages enable row level security;
+
+grant select, insert, delete on public.messages to authenticated;
+grant update (read_at) on public.messages to authenticated;   -- получателят може да променя само „прочетено"
+
+drop policy if exists "messages: read mine" on public.messages;
+create policy "messages: read mine" on public.messages
+  for select to authenticated using (sender_id = auth.uid() or recipient_id = auth.uid());
+
+drop policy if exists "messages: send to friends or replies" on public.messages;
+create policy "messages: send to friends or replies" on public.messages
+  for insert to authenticated with check (
+    sender_id = auth.uid()
+    and recipient_id <> auth.uid()
+    and (
+      exists (select 1 from public.friends f where f.user_id = auth.uid() and f.friend_id = recipient_id)
+      or exists (select 1 from public.messages m where m.sender_id = recipient_id and m.recipient_id = auth.uid())
+    )
+  );
+
+drop policy if exists "messages: mark read" on public.messages;
+create policy "messages: mark read" on public.messages
+  for update to authenticated using (recipient_id = auth.uid()) with check (recipient_id = auth.uid());
+
+drop policy if exists "messages: delete own sent" on public.messages;
+create policy "messages: delete own sent" on public.messages
+  for delete to authenticated using (sender_id = auth.uid());
+
+-- Събеседниците виждат името и снимката си един на друг (дори да са скрили името си за търсене).
+drop policy if exists "profiles: read chat partners" on public.profiles;
+create policy "profiles: read chat partners" on public.profiles
+  for select to authenticated using (
+    exists (select 1 from public.messages m
+            where (m.sender_id = profiles.id and m.recipient_id = auth.uid())
+               or (m.recipient_id = profiles.id and m.sender_id = auth.uid()))
+  );
+
+-- Нови съобщения пристигат веднага (Realtime).
+do $$ begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
