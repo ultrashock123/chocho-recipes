@@ -140,7 +140,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .surprise span { opacity: .88; font-size: .88rem; }
 
 /* ---------- Cards ---------- */
-.rail { display: flex; gap: 12px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 10px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.rail { scroll-padding: 0 16px; display: flex; gap: 12px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 10px; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .rail::-webkit-scrollbar { display: none; }
 .rail .card { width: 66%; max-width: 280px; flex: none; scroll-snap-align: start; }
 .rail .card .thumb { aspect-ratio: 4 / 3; }
@@ -472,3 +472,98 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
   box-shadow: var(--shadow-lg); transition: all .25s ease; max-width: 86vw; text-align: center;
 }
 #toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+/* ---------- Accounts ---------- */
+.btn-login {
+  height: 38px; padding: 0 18px; border-radius: 999px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 6px 16px rgba(232, 85, 47, .3);
+}
+.badge-bl {
+  position: absolute; bottom: 8px; left: 8px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: .8rem; background: rgba(0,0,0,.45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.pill.warn { background: rgba(242, 138, 60, .16); color: var(--accent-2); }
+.guest-card small { color: var(--text-2); }
+
+#auth-root:empty { display: none; }
+.auth {
+  position: fixed; inset: 0; z-index: 70; overflow-y: auto; display: grid; place-items: center;
+  padding: calc(var(--safe-top) + 20px) 16px calc(var(--safe-bottom) + 20px);
+  background: radial-gradient(120% 80% at 50% 0%, var(--accent-soft), transparent 60%), var(--bg);
+  animation: fade .25s ease;
+}
+.auth-card {
+  position: relative; width: 100%; max-width: 400px; padding: 28px 22px 22px; text-align: center;
+  background: var(--bg-elev); border-radius: 28px; box-shadow: var(--shadow-lg);
+}
+.auth-logo { width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 18px; box-shadow: 0 8px 20px rgba(232, 85, 47, .35); }
+.auth-card h1 { margin: 0; font-size: 1.7rem; letter-spacing: -.03em; }
+.auth-card h1 b { color: var(--accent); }
+.auth-sub { margin: 4px 0 18px; color: var(--text-2); font-size: .92rem; }
+.auth-title { margin: 0 0 12px; font-size: 1.05rem; }
+.oauth {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 48px; margin-bottom: 10px;
+  border-radius: 14px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font-weight: 700; transition: transform .15s;
+}
+.oauth:active { transform: scale(.98); }
+.oauth:disabled { opacity: .6; }
+.oauth svg { width: 20px; height: 20px; stroke: none; }
+.or { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: var(--text-3); font-size: .8rem; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+#auth-form { display: grid; gap: 10px; }
+#auth-form .field { background: var(--bg); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+#auth-form .btn { height: 48px; }
+.auth-msg { min-height: 1.3em; margin-top: 10px; font-size: .88rem; color: var(--text-2); }
+.auth-msg.err { color: var(--danger); }
+.auth-msg.ok { color: var(--ok); }
+.auth-links { display: grid; gap: 2px; margin: 6px 0 14px; }
+.auth-link { padding: 6px; color: var(--accent); font-weight: 600; font-size: .9rem; }
+.auth-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--fill); }
+.auth-close svg { width: 18px; height: 18px; }
+
+/* ---------- Desktop ---------- */
+@media (min-width: 900px) {
+  :root { --tabbar-h: 0px; }
+  #app { padding-left: 96px; }
+  .tabbar {
+    top: 0; right: auto; bottom: 0; width: 96px; height: 100vh; padding: 22px 8px; gap: 6px;
+    flex-direction: column; justify-content: flex-start; align-items: center;
+    border-top: 0; border-right: .5px solid var(--line);
+  }
+  .tabbar.hide { transform: none; }
+  .tab { flex: none; width: 78px; padding: 10px 0 8px; border-radius: 16px; transition: background .15s; }
+  .tab:hover { background: var(--fill); }
+  .tab-add { order: -1; margin-bottom: 14px; }
+  .tab-add:hover { background: none; }
+
+  .view { max-width: 1240px; padding: 28px 44px 56px; }
+  .view.narrow { max-width: 720px; }
+  .large-title { font-size: 2.7rem; }
+  .search { margin: 0 -44px; padding: 12px 44px 12px; }
+  .search-field { height: 48px; }
+  .chips, .rail { margin: 0 -44px; padding-left: 44px; padding-right: 44px; scroll-padding: 0 44px; }
+  .chips { flex-wrap: wrap; overflow: visible; }
+  .rail .card { width: 270px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+  .tiles { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+  .card, .tile { cursor: pointer; }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .tile:hover { transform: translateY(-2px); }
+  .surprise { max-width: 560px; }
+  .section-head h2 { font-size: 1.5rem; }
+
+  /* Recipes open as a panel from the right, over a dimmed backdrop. */
+  #pages-root:not(:empty)::before { content: ""; position: fixed; inset: 0; z-index: 29; background: rgba(0, 0, 0, .38); animation: fadeIn .2s ease; }
+  .page, .page.modal {
+    left: auto; width: min(800px, calc(100vw - 96px)); box-shadow: -24px 0 70px rgba(0, 0, 0, .28);
+    animation: slideIn .32s cubic-bezier(.2, .8, .2, 1);
+  }
+  .page.closing, .page.modal.closing { animation: slideOut .26s ease forwards; }
+  .detail-hero { height: 360px; max-height: none; }
+  .sheet-body { padding-left: 28px; padding-right: 28px; }
+
+  .action-sheet { left: 50%; right: auto; bottom: 50%; width: 420px; margin: 0; translate: -50% 50%; }
+  .confetti { left: 96px; }
+  #toast { bottom: 28px; left: calc(50% + 48px); }
+  .auth-card { padding: 34px 32px 26px; }
+}

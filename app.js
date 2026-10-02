@@ -1,9 +1,9 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.2.0';
-// Bump when recipes.json changes so installed apps pick up the corrected recipes.
-const SEED_VERSION = 2;
+const APP_VERSION = '1.3.0';
+// Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
+const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
 
 /* ---------------- Static data ---------------- */
 const CATEGORIES = [
@@ -86,6 +86,31 @@ const I18N = {
     ai_bad_code: 'Грешен AI код за достъп', ai_not_configured: 'AI още не е настроен на сървъра (липсва API ключ).',
     ai_need_input: 'Напиши нещо или добави снимка', ai_section: 'AI помощник', ai_code: 'Код за достъп до AI',
     ai_code_hint: 'Кодът се задава в Netlify (APP_ACCESS_CODE). Пази бюджета ти — без него AI функциите не работят.',
+    auth_tagline: 'Книга с рецепти — твоите и на другите', auth_signin: 'Вход', auth_signup: 'Регистрация',
+    auth_google: 'Продължи с Google', auth_facebook: 'Продължи с Facebook', auth_or_email: 'или с имейл',
+    auth_email: 'Имейл', auth_password: 'Парола', auth_password_new: 'Парола (поне 6 символа)',
+    auth_no_account: 'Нямаш акаунт? Регистрирай се', auth_have_account: 'Вече имаш акаунт? Влез',
+    auth_forgot: 'Забравена парола', auth_forgot_title: 'Нова парола', auth_newpass_title: 'Избери нова парола',
+    auth_send_link: 'Изпрати линк', auth_guest: 'Продължи като гост',
+    auth_guest_hint: 'Като гост виждаш само публичните рецепти и не можеш да добавяш свои.',
+    auth_check_mail: 'Изпратихме ти имейл — натисни линка в него, за да потвърдиш акаунта, и после влез.',
+    auth_reset_sent: 'Ако има такъв акаунт, ще получиш имейл с линк за нова парола.',
+    auth_err_creds: 'Грешен имейл или парола', auth_err_confirm: 'Потвърди имейла си (виж пощата) и опитай пак',
+    auth_err_exists: 'Вече има акаунт с този имейл — влез или направи нова парола', auth_err_short: 'Паролата трябва да е поне 6 символа',
+    auth_err_rate: 'Твърде много опити — изчакай малко', auth_err_provider: 'Този начин за вход още не е настроен',
+    auth_err_net: 'Няма връзка с интернет', auth_err_email: 'Въведи валиден имейл', auth_err_generic: 'Нещо се обърка. Опитай пак.',
+    account: 'Акаунт', logout: 'Изход', login: 'Вход', login_to_add: 'Влез, за да добавяш свои рецепти',
+    login_prompt: 'Влез или се регистрирай, за да добавяш рецепти, любими и да ги споделяш.',
+    guest_card: 'Гост режим', guest_card_sub: 'Виждаш само публичните рецепти.', signed_as: 'Влязъл като',
+    logout_q: 'Да излезеш ли от акаунта?', logged_out: 'Излезе от акаунта',
+    f_visibility: 'Кой я вижда', vis_public: '🌍 Публична', vis_private: '🔒 Лична',
+    vis_public_sub: 'Всички потребители могат да я видят.', vis_private_sub: 'Само ти я виждаш.',
+    pill_public: '🌍 Публична', pill_private: '🔒 Лична', made_public: 'Рецептата е публична', made_private: 'Рецептата е лична',
+    make_public: 'Направи публична', make_private: 'Направи лична', by_author: n => `от ${n}`,
+    edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
+    scope_mine: 'Мои', save_err: 'Не успях да запазя — провери връзката', load_offline: 'Няма връзка — показвам запазените рецепти',
+    local_found: n => `Намерени ${n} рецепти само на този телефон`, upload_local: 'Качи рецептите от този телефон в акаунта',
+    upload_local_q: 'Как да ги качим?', upload_done: n => `Качени ${n} рецепти`, upload_busy: 'Качвам…', cloud_hint: 'Рецептите и снимките ти се пазят в акаунта и са достъпни от всяко устройство.',
   },
   en: {
     tab_home: 'Recipes', tab_categories: 'Categories', tab_favorites: 'Favorites', tab_settings: 'Settings',
@@ -138,6 +163,31 @@ const I18N = {
     ai_bad_code: 'Wrong AI access code', ai_not_configured: 'AI is not set up on the server yet (missing API key).',
     ai_need_input: 'Write something or add a photo', ai_section: 'AI assistant', ai_code: 'AI access code',
     ai_code_hint: 'The code is set in Netlify (APP_ACCESS_CODE). It protects your budget — AI features need it.',
+    auth_tagline: 'A recipe book — yours and everyone’s', auth_signin: 'Sign in', auth_signup: 'Sign up',
+    auth_google: 'Continue with Google', auth_facebook: 'Continue with Facebook', auth_or_email: 'or with email',
+    auth_email: 'Email', auth_password: 'Password', auth_password_new: 'Password (min. 6 characters)',
+    auth_no_account: 'No account? Sign up', auth_have_account: 'Already have an account? Sign in',
+    auth_forgot: 'Forgot password', auth_forgot_title: 'Reset password', auth_newpass_title: 'Choose a new password',
+    auth_send_link: 'Send link', auth_guest: 'Continue as guest',
+    auth_guest_hint: 'As a guest you only see public recipes and cannot add your own.',
+    auth_check_mail: 'We sent you an email — tap the link in it to confirm your account, then sign in.',
+    auth_reset_sent: 'If that account exists, you will get an email with a reset link.',
+    auth_err_creds: 'Wrong email or password', auth_err_confirm: 'Confirm your email (check your inbox) and try again',
+    auth_err_exists: 'An account with this email already exists — sign in or reset the password', auth_err_short: 'Password must be at least 6 characters',
+    auth_err_rate: 'Too many attempts — wait a bit', auth_err_provider: 'This sign-in method is not set up yet',
+    auth_err_net: 'No internet connection', auth_err_email: 'Enter a valid email', auth_err_generic: 'Something went wrong. Try again.',
+    account: 'Account', logout: 'Sign out', login: 'Sign in', login_to_add: 'Sign in to add your own recipes',
+    login_prompt: 'Sign in or sign up to add recipes, favorites and share them.',
+    guest_card: 'Guest mode', guest_card_sub: 'You only see public recipes.', signed_as: 'Signed in as',
+    logout_q: 'Sign out of your account?', logged_out: 'Signed out',
+    f_visibility: 'Who can see it', vis_public: '🌍 Public', vis_private: '🔒 Private',
+    vis_public_sub: 'All users can see it.', vis_private_sub: 'Only you can see it.',
+    pill_public: '🌍 Public', pill_private: '🔒 Private', made_public: 'Recipe is now public', made_private: 'Recipe is now private',
+    make_public: 'Make public', make_private: 'Make private', by_author: n => `by ${n}`,
+    edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
+    scope_mine: 'Mine', save_err: 'Could not save — check your connection', load_offline: 'Offline — showing saved recipes',
+    local_found: n => `Found ${n} recipes only on this phone`, upload_local: 'Upload recipes from this phone to your account',
+    upload_local_q: 'How should we upload them?', upload_done: n => `Uploaded ${n} recipes`, upload_busy: 'Uploading…', cloud_hint: 'Your recipes and photos are stored in your account and available on any device.',
   },
 };
 
@@ -224,6 +274,7 @@ const DB = {
   get: (s, k) => DB.req(s, 'readonly', st => st.get(k)),
   put: (s, v, k) => DB.req(s, 'readwrite', st => (k === undefined ? st.put(v) : st.put(v, k))),
   del: (s, k) => DB.req(s, 'readwrite', st => st.delete(k)),
+  clear: s => DB.req(s, 'readwrite', st => st.clear()),
   putMany(s, items) {
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction(s, 'readwrite');
@@ -273,14 +324,18 @@ async function compressImage(file, max = 1600, quality = 0.82) {
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   return new Promise(res => c.toBlob(res, 'image/jpeg', quality));
 }
+// Signed-in users store photos in the cloud (a URL); everyone else on this device (idb: reference).
 async function storePhoto(file, max) {
   const blob = await compressImage(file, max);
+  if (auth.mode === 'user') return cloud.uploadPhoto(blob);
   const id = uid('p');
   await DB.put('photos', { id, blob, created: Date.now() });
   return 'idb:' + id;
 }
+const isOwnedPhoto = ref => !!ref && (ref.startsWith('idb:') || isOwnCloudPhoto(ref));
 async function deletePhoto(ref) {
-  if (!ref || !ref.startsWith('idb:')) return;
+  if (!ref) return;
+  if (!ref.startsWith('idb:')) { if (auth.mode === 'user') await cloud.deletePhoto(ref); return; }
   const id = ref.slice(4);
   await DB.del('photos', id);
   if (photoURLs.has(id)) { URL.revokeObjectURL(photoURLs.get(id)); photoURLs.delete(id); }
@@ -335,73 +390,157 @@ function buildTerms(q) {
   });
 }
 
-/* ---------------- State ---------------- */
+/* ---------------- State & data ---------------- */
 const state = {
   recipes: [],
   tab: 'home',
   query: '',
   cat: null,
   coll: null,
+  scope: 'all', // 'all' | 'mine'
   pages: [],
 };
 const byId = id => state.recipes.find(r => r.id === id);
 
+let seeds = [];   // the original recipes from recipes.json: public and read-only
+let custom = [];  // recipes made by people: own ones (+ other people's public ones when the cloud is on)
+let states = {};  // per-user { [recipeId]: { favorite, tried } }
+
+const isMine = r => auth.mode === 'user' ? r.owner === auth.user.id : auth.mode === 'local' && !r.seed;
+const canWrite = () => auth.mode !== 'guest';
+const stateKey = () => auth.mode === 'user' ? auth.user.id : auth.mode;
+const storable = r => Object.fromEntries(Object.entries(r).filter(([k]) => !k.startsWith('_') && !['favorite', 'tried', 'owner', 'ownerName'].includes(k)));
+
+// Recipes made on this device (used when accounts are off, and as the source for "upload to my account").
+const localBackend = {
+  list: () => DB.all('recipes'),
+  save: r => DB.put('recipes', storable(r)),
+  remove: r => DB.del('recipes', r.id),
+};
+const backend = () => auth.mode === 'user' ? cloud : localBackend;
+
 async function loadData() {
   await DB.open();
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
-  const seeded = await DB.get('kv', 'seedVersion');
-  if (!seeded) {
-    const seed = await fetch('recipes.json').then(r => r.json());
-    const now = Date.now();
-    await DB.putMany('recipes', seed.map((r, i) => normalizeSeed(r, now - (seed.length - i) * 1000)));
-    await DB.put('kv', SEED_VERSION, 'seedVersion');
-  } else if (seeded < SEED_VERSION) {
-    await upgradeSeed();
-    await DB.put('kv', SEED_VERSION, 'seedVersion');
+  const raw = await fetch('recipes.json').then(r => r.json());
+  seeds = raw.map((r, i) => normalizeSeed(r, 1.7e12 + i * 1000));
+  await migrateLegacy();
+  await loadUserData();
+}
+async function loadUserData() {
+  const key = stateKey();
+  states = (await DB.get('kv', 'states:' + key)) || {};
+  if (auth.mode === 'local') custom = await localBackend.list();
+  else {
+    try {
+      custom = await cloud.list();
+      if (auth.mode === 'user') states = await cloud.loadStates();
+      await DB.put('kv', custom, 'cache:' + key);
+      await DB.put('kv', states, 'states:' + key);
+    } catch (e) {
+      custom = (await DB.get('kv', 'cache:' + key)) || [];
+      toast(t('load_offline'));
+    }
   }
-  state.recipes = await DB.all('recipes');
-  state.recipes.forEach(indexRecipe);
+  settingsView.localCount = auth.mode === 'user' ? (await localBackend.list()).length : 0;
+  compose();
+}
+async function reloadAll() {
+  while (state.pages.length) popPage();
+  await loadUserData();
+  renderTab();
+}
+// Merge originals + people's recipes with this user's favorites/tried marks.
+function compose() {
+  // An original the user replaced with their own edited version is hidden for them.
+  const hidden = new Set(custom.filter(r => r.basedOn && isMine(r)).map(r => r.basedOn));
+  const list = [...seeds.filter(s => !hidden.has(s.id)), ...custom];
+  list.forEach(r => {
+    const st = states[r.id] || {};
+    r.favorite = !!st.favorite;
+    r.tried = st.tried === undefined || st.tried === null ? !!r.seedTried : !!st.tried;
+    indexRecipe(r);
+  });
+  state.recipes = list;
 }
 function normalizeSeed(r, created) {
   return {
     id: r.id, title: r.title, collection: r.collection, categories: r.categories || [],
-    source: r.source || null, tried: r.tried === true, ingredients: r.ingredients || [], steps: r.steps || '',
-    notes: r.notes || '', links: r.links || [], images: r.images || [], favorite: false,
+    source: r.source || null, seedTried: r.tried === true, ingredients: r.ingredients || [], steps: r.steps || '',
+    notes: r.notes || '', links: r.links || [], images: r.images || [], favorite: false, tried: r.tried === true,
     time: r.time || '', servings: r.servings || '', createdAt: created, updatedAt: created, seed: true,
+    owner: null, visibility: 'public',
   };
 }
-// Refresh original recipes with corrected content. Keeps favorites, "tried" marks and the
-// user's own photos; skips recipes the user edited or deleted.
-async function upgradeSeed() {
-  const seed = await fetch('recipes.json', { cache: 'no-store' }).then(r => r.json());
-  const have = new Map((await DB.all('recipes')).map(r => [r.id, r]));
-  const updates = [];
-  for (const s of seed) {
-    const cur = have.get(s.id);
-    if (!cur || cur.edited) continue;
-    const fresh = normalizeSeed(s, cur.createdAt);
-    updates.push(Object.assign(cur, {
-      title: fresh.title, collection: fresh.collection, categories: fresh.categories, source: fresh.source,
-      ingredients: fresh.ingredients, steps: fresh.steps, notes: fresh.notes, links: fresh.links,
-      time: fresh.time || cur.time || '', servings: fresh.servings || cur.servings || '',
-      images: [...fresh.images, ...(cur.images || []).filter(i => i.startsWith('idb:'))],
-      tried: cur.tried || fresh.tried,
-    }));
+// v1.2 kept everything (originals, favorites, edits) in one IndexedDB store. Split it: favorites/tried become
+// "states", edited originals become the user's own versions, originals themselves are read from recipes.json.
+async function migrateLegacy() {
+  if (await DB.get('kv', 'migratedV3')) return;
+  const old = await DB.all('recipes');
+  const st = (await DB.get('kv', 'states:local')) || {};
+  const seedMap = new Map(seeds.map(s => [s.id, s]));
+  const keep = [];
+  for (const r of old) {
+    const s = seedMap.get(r.id);
+    if (r.seed || s) {
+      if (s && (r.favorite || !!r.tried !== s.seedTried)) st[r.id] = { favorite: !!r.favorite, tried: !!r.tried };
+      if (r.edited) keep.push(Object.assign({}, r, { id: uid('r'), seed: false, basedOn: r.id }));
+    } else {
+      if (r.favorite || r.tried) st[r.id] = { favorite: !!r.favorite, tried: !!r.tried };
+      keep.push(Object.assign({}, r, { seed: false }));
+    }
   }
-  if (updates.length) await DB.putMany('recipes', updates);
+  await DB.clear('recipes');
+  await DB.putMany('recipes', keep.map(storable));
+  await DB.put('kv', st, 'states:local');
+  await DB.put('kv', true, 'migratedV3');
 }
+
 async function saveRecipe(r) {
   r.updatedAt = Date.now();
-  const clean = Object.fromEntries(Object.entries(r).filter(([k]) => !k.startsWith('_')));
-  await DB.put('recipes', clean);
-  indexRecipe(r);
-  const i = state.recipes.findIndex(x => x.id === r.id);
-  if (i >= 0) state.recipes[i] = r; else state.recipes.push(r);
+  await backend().save(r);
+  const i = custom.findIndex(x => x.id === r.id);
+  if (i >= 0) custom[i] = r; else custom.push(r);
+  compose();
 }
 async function removeRecipe(r) {
-  for (const ref of r.images || []) await deletePhoto(ref);
-  await DB.del('recipes', r.id);
-  state.recipes = state.recipes.filter(x => x.id !== r.id);
+  if (auth.mode !== 'user') for (const ref of r.images || []) await deletePhoto(ref);
+  await backend().remove(r);
+  custom = custom.filter(x => x.id !== r.id);
+  compose();
+}
+async function setState(r, patch) {
+  const next = Object.assign({}, states[r.id], patch);
+  states[r.id] = next;
+  r.favorite = !!next.favorite;
+  if ('tried' in patch) r.tried = !!next.tried;
+  try { await DB.put('kv', states, 'states:' + stateKey()); } catch (e) {}
+  if (auth.mode === 'user') { try { await cloud.saveState(r.id, next); } catch (e) { toast(t('save_err')); } }
+}
+
+// Copy recipes made on this phone (before accounts) into the signed-in account.
+async function uploadLocalRecipes(visibility) {
+  const local = await localBackend.list();
+  const localStates = (await DB.get('kv', 'states:local')) || {};
+  let n = 0;
+  for (const r of local) {
+    try {
+      const images = [];
+      for (const ref of r.images || []) {
+        if (ref.startsWith('idb:')) {
+          const rec = await DB.get('photos', ref.slice(4));
+          images.push(rec ? await cloud.uploadPhoto(rec.blob) : null);
+        } else images.push(ref);
+      }
+      const up = Object.assign({}, r, { images: images.filter(Boolean), owner: auth.user.id, visibility });
+      await cloud.save(up);
+      if (localStates[r.id]) { states[r.id] = localStates[r.id]; await cloud.saveState(r.id, localStates[r.id]); }
+      for (const ref of r.images || []) if (ref.startsWith('idb:')) await deletePhoto(ref);
+      await localBackend.remove(r);
+      n++;
+    } catch (e) { /* keep the local copy; it can be retried */ }
+  }
+  return n;
 }
 
 /* ---------------- Rendering helpers ---------------- */
@@ -415,6 +554,7 @@ function card(r) {
   return `<button class="card" data-open="${esc(r.id)}">
     <div class="thumb">${cover ? imgTag(cover) : placeholder(r)}
       ${r.tried ? `<span class="badge-tl">✓ ${esc(t('tried'))}</span>` : ''}
+      ${r.visibility === 'private' && auth.mode !== 'local' ? `<span class="badge-bl" title="${esc(t('pill_private'))}">🔒</span>` : ''}
       <span class="fav-dot ${r.favorite ? 'on' : ''}" data-fav="${esc(r.id)}">${I.heart}</span>
     </div>
     <div class="card-body">
@@ -435,9 +575,12 @@ function greeting() {
   const h = new Date().getHours();
   return t(h < 11 ? 'morning' : h < 18 ? 'day' : 'evening');
 }
+const myName = () => (auth.mode === 'user' ? (auth.profile && auth.profile.display_name) || '' : settings.name || '').trim();
+const myAvatar = () => auth.mode === 'user' ? (auth.profile && auth.profile.avatar_url) : settings.avatar;
 function avatarHTML() {
-  if (settings.avatar) return `<span class="avatar">${imgTag(settings.avatar, '', false)}</span>`;
-  const name = (settings.name || '').trim();
+  const av = myAvatar();
+  if (av) return `<span class="avatar">${imgTag(av, '', false)}</span>`;
+  const name = myName();
   if (name) return `<span class="avatar">${esc(name.charAt(0).toUpperCase())}</span>`;
   return `<span class="avatar avatar-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4.1-6 7.5-6s6.3 2 7.5 6"/></svg></span>`;
 }
@@ -456,6 +599,7 @@ function renderTab() {
 
 function filtered() {
   let list = state.recipes;
+  if (state.scope === 'mine') list = list.filter(isMine);
   if (state.cat) list = list.filter(r => (r.categories || []).includes(state.cat));
   if (state.coll) list = list.filter(r => r.collection === state.coll);
   const q = state.query.trim();
@@ -472,8 +616,9 @@ function homeView() {
   state.recipes.forEach(r => (r.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
   const collCounts = {};
   state.recipes.forEach(r => { collCounts[r.collection] = (collCounts[r.collection] || 0) + 1; });
-  const filtering = state.query.trim() || state.cat || state.coll;
+  const filtering = state.query.trim() || state.cat || state.coll || state.scope === 'mine';
   const list = filtered();
+  const mineCount = state.recipes.filter(isMine).length;
 
   let body = '';
   if (!filtering) {
@@ -495,7 +640,9 @@ function homeView() {
   return `<section class="view home">
     <div class="topbar">
       ${brandHTML()}
-      <button data-tab-go="settings" aria-label="Profile">${avatarHTML()}</button>
+      ${auth.mode === 'guest'
+        ? `<button class="btn-login" data-action="login">${esc(t('login'))}</button>`
+        : `<button data-tab-go="settings" aria-label="Profile">${avatarHTML()}</button>`}
     </div>
     <div class="greeting" style="margin-top:14px">${esc(greeting())} 👋</div>
     <h1 class="large-title">${esc(t('home_title'))}</h1>
@@ -509,7 +656,8 @@ function homeView() {
       </div>
     </div>
     <div class="chips seg">
-      <button class="chip small ${!state.coll ? 'active' : ''}" data-coll="">${esc(t('all'))}</button>
+      <button class="chip small ${!state.coll && state.scope === 'all' ? 'active' : ''}" data-coll="">${esc(t('all'))}</button>
+      ${auth.mode !== 'guest' ? `<button class="chip small ${state.scope === 'mine' ? 'active' : ''}" data-scope="mine">👤 ${esc(t('scope_mine'))} <span class="count">${mineCount}</span></button>` : ''}
       ${COLLECTIONS.filter(c => collCounts[c.id]).map(c => `<button class="chip small ${state.coll === c.id ? 'active' : ''}" data-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${collCounts[c.id]}</span></button>`).join('')}
     </div>
     <div class="chips">
@@ -561,15 +709,19 @@ function settingsView() {
   const scaleIdx = Math.max(0, SCALES.indexOf(Number(settings.scale)));
   const seg = (key, opts) => `<div class="segmented">${opts.map(([v, label]) =>
     `<button class="${settings[key] === v ? 'active' : ''}" data-set="${key}" data-val="${v}">${esc(label)}</button>`).join('')}</div>`;
-  return `<section class="view">
+  return `<section class="view narrow">
     <h1 class="large-title" style="margin-top:8px">${esc(t('settings'))}</h1>
-    <div class="profile-card">
+    ${auth.mode === 'guest' ? `<div class="profile-card guest-card">
+      <span class="avatar avatar-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4.1-6 7.5-6s6.3 2 7.5 6"/></svg></span>
+      <div style="flex:1;min-width:0"><b>${esc(t('guest_card'))}</b><br><small>${esc(t('guest_card_sub'))}</small></div>
+      <button class="btn primary" style="width:auto;padding:0 18px" data-action="login">${esc(t('login'))}</button>
+    </div>` : `<div class="profile-card">
       <button data-action="avatar">${avatarHTML()}</button>
       <div style="flex:1;min-width:0">
-        <input id="profile-name" value="${esc(settings.name)}" placeholder="${esc(t('your_name'))}" maxlength="40">
-        <small>${esc(t('personal'))}</small>
+        <input id="profile-name" value="${esc(myName())}" placeholder="${esc(t('your_name'))}" maxlength="40">
+        <small>${esc(auth.mode === 'user' ? auth.user.email || '' : t('personal'))}</small>
       </div>
-    </div>
+    </div>`}
     <div class="stats">
       <div class="stat"><b>${n}</b><span>${esc(t('st_recipes'))}</span></div>
       <div class="stat"><b>${f}</b><span>${esc(t('st_fav'))}</span></div>
@@ -597,13 +749,18 @@ function settingsView() {
     </div>
     <p class="hint">${esc(t('ai_code_hint'))}</p>
 
-    <div class="group-label">${esc(t('data'))}</div>
+    ${auth.mode === 'local' ? `<div class="group-label">${esc(t('data'))}</div>
     <div class="group">
       <button class="row row-btn" data-action="export"><span class="lbl"><span class="ic" style="background:#2FA36B">⬆︎</span>${esc(t('export'))}</span></button>
       <button class="row row-btn" data-action="import"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬇︎</span>${esc(t('import'))}</span></button>
-      <button class="row row-btn" data-action="restore-seed"><span class="lbl"><span class="ic" style="background:#E8552F">↺</span>${esc(t('restore_seed'))}</span></button>
     </div>
-    <p class="hint">${esc(t('storage_hint'))}</p>
+    <p class="hint">${esc(t('storage_hint'))}</p>` : ''}
+    ${auth.mode === 'user' ? `<div class="group-label">${esc(t('account'))}</div>
+    <div class="group">
+      ${settingsView.localCount ? `<button class="row row-btn" data-action="upload-local"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬆︎</span>${esc(t('upload_local'))} (${settingsView.localCount})</span></button>` : ''}
+      <button class="row row-btn" data-action="logout"><span class="lbl"><span class="ic" style="background:#E0393E">⎋</span>${esc(t('logout'))}</span></button>
+    </div>
+    <p class="hint">${esc(t('cloud_hint'))}</p>` : ''}
     <p class="footer-note">👨‍🍳 ${esc(t('about'))} ${APP_VERSION}<br>${esc(t('install_hint'))}</p>
   </section>`;
 }
@@ -695,7 +852,7 @@ function detailHTML(r, tabSel = 'ing') {
         <button class="glass" data-action="back" aria-label="Back">${I.back}</button>
         <div class="hero-actions">
           <button class="glass ${r.favorite ? 'on' : ''}" data-action="toggle-fav" aria-label="Favorite">${I.heart}</button>
-          <button class="glass" data-action="recipe-menu" aria-label="More">${I.more}</button>
+          ${canWrite() ? `<button class="glass" data-action="recipe-menu" aria-label="More">${I.more}</button>` : ''}
         </div>
       </div>
     </div>
@@ -705,6 +862,8 @@ function detailHTML(r, tabSel = 'ing') {
         <span class="pill accent">${COLL[r.collection]?.emoji || ''} ${esc(collName(r.collection))}</span>
         ${r.tried ? `<span class="pill ok">✓ ${esc(t('tried'))}</span>` : ''}
         ${r.source ? `<span class="pill">✍️ ${esc(r.source)}</span>` : ''}
+        ${!r.seed && auth.mode !== 'local' ? `<span class="pill ${r.visibility === 'private' ? 'warn' : ''}">${esc(t(r.visibility === 'private' ? 'pill_private' : 'pill_public'))}</span>` : ''}
+        ${!r.seed && r.ownerName && !isMine(r) ? `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>` : ''}
         ${meta}${cats}
       </div>
       <div class="quick-actions">
@@ -816,6 +975,13 @@ function editorHTML(d, isNew) {
         <input class="field title-field" id="e-title" placeholder="${esc(t('f_title'))}" value="${esc(d.title)}" maxlength="160">
       </div>
 
+      ${auth.mode === 'user' ? `<div class="group-label">${esc(t('f_visibility'))}</div>
+      <div class="group"><div class="seg-row"><div class="segmented" id="e-vis">
+        <button class="${d.visibility !== 'private' ? 'active' : ''}" data-pick-vis="public">${esc(t('vis_public'))}</button>
+        <button class="${d.visibility === 'private' ? 'active' : ''}" data-pick-vis="private">${esc(t('vis_private'))}</button>
+      </div></div></div>
+      <p class="hint" id="e-vis-hint">${esc(t(d.visibility === 'private' ? 'vis_private_sub' : 'vis_public_sub'))}</p>` : ''}
+
       <div class="group-label">${esc(t('f_photos'))}</div>
       <div class="group">
         <div id="e-photos">${photoStrip(d)}</div>
@@ -879,9 +1045,10 @@ function openEditor(existing, prefill = null) {
     title: existing.title, images: existing.images || [], categories: existing.categories || [], collection: existing.collection,
     ingredients: existing.ingredients || [], steps: existing.steps || '', notes: existing.notes || '', links: existing.links || [],
     tried: !!existing.tried, time: existing.time || '', servings: existing.servings || '',
+    visibility: existing.visibility || 'public', basedOn: existing.basedOn || null,
   })) : {
     title: '', images: [], categories: state.cat ? [state.cat] : [], collection: 'mine', ingredients: [], steps: '', notes: '',
-    links: [], tried: false, time: '', servings: '',
+    links: [], tried: false, time: '', servings: '', visibility: 'public', basedOn: null,
     ...(prefill || {}),
   };
   const added = [];      // photos stored during this edit session
@@ -919,9 +1086,14 @@ function openEditor(existing, prefill = null) {
       readForm();
       if (!d.title) { toast(t('need_title')); $('#e-title', el).focus(); return; }
       if (!d.categories.length) d.categories = ['other'];
-      const r = existing || { id: uid('r'), createdAt: Date.now(), favorite: false, source: null, seed: false };
-      Object.assign(r, d, { edited: true });
-      await saveRecipe(r);
+      const r = existing || { id: uid('r'), createdAt: Date.now(), favorite: false, source: null, seed: false,
+        owner: auth.mode === 'user' ? auth.user.id : null, ownerName: myName() };
+      const wasTried = existing ? !!existing.tried : false;
+      const { tried, ...fields } = d;
+      Object.assign(r, fields);
+      try { await saveRecipe(r); }
+      catch (err) { toast(t('save_err')); return; }
+      if (tried !== wasTried) await setState(r, { tried });
       for (const ref of removed) await deletePhoto(ref);
       saved = true;
       popPage();
@@ -942,7 +1114,7 @@ function openEditor(existing, prefill = null) {
     }
     if (b.dataset.rmPhoto !== undefined) {
       const [ref] = d.images.splice(Number(b.dataset.rmPhoto), 1);
-      if (ref && ref.startsWith('idb:')) (added.includes(ref) ? deletePhoto(ref) : removed.push(ref));
+      if (isOwnedPhoto(ref)) (added.includes(ref) ? deletePhoto(ref) : removed.push(ref));
       rerenderPhotos();
       return;
     }
@@ -950,6 +1122,12 @@ function openEditor(existing, prefill = null) {
       const c = b.dataset.pickCat;
       d.categories = d.categories.includes(c) ? d.categories.filter(x => x !== c) : [...d.categories, c];
       b.classList.toggle('active');
+      return;
+    }
+    if (b.dataset.pickVis) {
+      d.visibility = b.dataset.pickVis;
+      el.querySelectorAll('[data-pick-vis]').forEach(x => x.classList.toggle('active', x === b));
+      $('#e-vis-hint', el).textContent = t(d.visibility === 'private' ? 'vis_private_sub' : 'vis_public_sub');
       return;
     }
     if (b.dataset.pickColl) {
@@ -1244,7 +1422,7 @@ const blobToDataURL = b => new Promise(res => { const fr = new FileReader(); fr.
 async function exportBackup() {
   const recipes = await DB.all('recipes');
   const photos = await DB.all('photos');
-  const out = { app: 'chocho-recipes', version: 1, exportedAt: new Date().toISOString(), settings, recipes, photos: [] };
+  const out = { app: 'chocho-recipes', version: 2, exportedAt: new Date().toISOString(), settings, recipes, states: (await DB.get('kv', 'states:local')) || {}, photos: [] };
   for (const p of photos) out.photos.push({ id: p.id, data: await blobToDataURL(p.blob) });
   const name = `recipes-backup-${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([JSON.stringify(out)], name, { type: 'application/json' });
@@ -1269,36 +1447,32 @@ async function importBackup() {
         const blob = await (await fetch(p.data)).blob();
         await DB.put('photos', { id: p.id, blob, created: Date.now() });
       }
-      await DB.putMany('recipes', data.recipes);
-      state.recipes = await DB.all('recipes');
-      state.recipes.forEach(indexRecipe);
+      // Backups from v1.2 hold the original recipes too: keep only people's own recipes and edited originals.
+      const mine = data.recipes.filter(r => !r.seed || r.edited)
+        .map(r => r.seed ? Object.assign({}, r, { id: uid('r'), seed: false, basedOn: r.id }) : r);
+      await DB.putMany('recipes', mine.map(storable));
+      const st = (await DB.get('kv', 'states:local')) || {};
+      for (const r of data.recipes) if (r.favorite || r.tried) st[r.id] = { favorite: !!r.favorite, tried: !!r.tried };
+      Object.assign(st, data.states || {});
+      await DB.put('kv', st, 'states:local');
+      await loadUserData();
       renderTab();
-      toast(t('import_done', data.recipes.length));
+      toast(t('import_done', mine.length));
     } catch (e) { toast(t('import_err')); }
   };
   input.click();
-}
-async function restoreSeed() {
-  const seed = await fetch('recipes.json').then(r => r.json());
-  const have = new Set(state.recipes.map(r => r.id));
-  const missing = seed.filter(r => !have.has(r.id)).map((r, i) => normalizeSeed(r, Date.now() - 1e9 + i));
-  if (missing.length) {
-    await DB.putMany('recipes', missing);
-    missing.forEach(r => { indexRecipe(r); state.recipes.push(r); });
-  }
-  renderTab();
-  toast(t('restore_done', missing.length));
 }
 
 /* ---------------- Events ---------------- */
 function bindEvents() {
   document.addEventListener('click', async e => {
+    if (e.target.id === 'pages-root') { popPage(); return; } // click on the dimmed backdrop (desktop)
     const favBtn = e.target.closest('[data-fav]');
     if (favBtn) {
       e.stopPropagation();
       const r = byId(favBtn.dataset.fav);
-      r.favorite = !r.favorite; haptic();
-      await saveRecipe(r);
+      haptic();
+      await setState(r, { favorite: !r.favorite });
       favBtn.classList.toggle('on', r.favorite);
       if (state.tab === 'favorites') renderTab();
       return;
@@ -1318,7 +1492,9 @@ function bindEvents() {
     const catBtn = e.target.closest('[data-cat]');
     if (catBtn) { state.cat = catBtn.dataset.cat || null; renderTab(); return; }
     const collBtn = e.target.closest('[data-coll]');
-    if (collBtn) { state.coll = collBtn.dataset.coll || null; renderTab(); return; }
+    if (collBtn) { state.coll = collBtn.dataset.coll || null; if (!state.coll) state.scope = 'all'; renderTab(); return; }
+    const scopeBtn = e.target.closest('[data-scope]');
+    if (scopeBtn) { state.scope = state.scope === scopeBtn.dataset.scope ? 'all' : scopeBtn.dataset.scope; renderTab(); return; }
     const goCat = e.target.closest('[data-go-cat]');
     if (goCat) { state.cat = goCat.dataset.goCat; state.coll = null; state.query = ''; state.tab = 'home'; renderTab(); window.scrollTo(0, 0); return; }
     const goColl = e.target.closest('[data-go-coll]');
@@ -1347,11 +1523,27 @@ function bindEvents() {
     const detail = a.closest('.detail');
     const r = detail ? byId(detail.dataset.id) : null;
     switch (act) {
-      case 'new-recipe': askAddMode(); break;
+      case 'new-recipe': if (canWrite()) askAddMode(); else promptLogin(); break;
+      case 'login': openAuth({ view: 'signin' }); break;
+      case 'logout': {
+        const ok = await actionSheet(t('logout_q'), [{ label: t('logout'), danger: true, value: true }]);
+        if (ok) { await signOut(); toast(t('logged_out')); }
+        break;
+      }
+      case 'upload-local': {
+        const v = await actionSheet(t('upload_local_q'), [
+          { label: t('vis_public'), value: 'public' }, { label: t('vis_private'), value: 'private' }]);
+        if (!v) break;
+        toast(t('upload_busy'));
+        const n = await uploadLocalRecipes(v);
+        await reloadAll();
+        toast(t('upload_done', n));
+        break;
+      }
       case 'roulette': openRoulette(); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
-      case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; renderTab(); break;
+      case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.scope = 'all'; renderTab(); break;
       case 'surprise': {
         const pool = filtered().length ? filtered() : state.recipes;
         openRecipe(pool[Math.floor(Math.random() * pool.length)].id); break;
@@ -1366,10 +1558,10 @@ function bindEvents() {
         break;
       }
       case 'toggle-fav':
-        r.favorite = !r.favorite; haptic(); await saveRecipe(r);
+        haptic(); await setState(r, { favorite: !r.favorite });
         a.classList.toggle('on', r.favorite); renderTab(); break;
       case 'toggle-tried':
-        r.tried = !r.tried; haptic(); await saveRecipe(r); refreshDetail(r); renderTab(); break;
+        haptic(); await setState(r, { tried: !r.tried }); refreshDetail(r); renderTab(); break;
       case 'cook': {
         const page = a.closest('.page');
         const on = !page.classList.contains('cook-mode');
@@ -1388,35 +1580,53 @@ function bindEvents() {
         break;
       }
       case 'recipe-menu': {
-        const v = await actionSheet(r.title, [
-          { label: '✏️ ' + t('edit'), value: 'edit' },
-          { label: '🗑 ' + t('delete'), value: 'delete', danger: true },
-        ]);
+        const mine = isMine(r);
+        const opts = mine ? [{ label: '✏️ ' + t('edit'), value: 'edit' }] : r.seed
+          ? [{ label: '✏️ ' + t('edit_mine'), value: 'fork' }]
+          : [{ label: '📋 ' + t('copy_mine'), value: 'copy' }];
+        if (mine && auth.mode === 'user') opts.push(r.visibility === 'private'
+          ? { label: t('make_public'), value: 'public' } : { label: t('make_private'), value: 'private' });
+        if (mine) opts.push({ label: '🗑 ' + t('delete'), value: 'delete', danger: true });
+        const v = await actionSheet(r.title, opts);
         if (v === 'edit') openEditor(r);
+        if (v === 'fork' || v === 'copy') {
+          openEditor(null, Object.assign(JSON.parse(JSON.stringify(Object.fromEntries(RECIPE_FIELDS.map(k => [k, r[k]])))),
+            { basedOn: v === 'fork' ? r.id : null, tried: r.tried, source: null }));
+        }
+        if (v === 'public' || v === 'private') {
+          r.visibility = v;
+          try { await saveRecipe(r); refreshDetail(r); renderTab(); toast(t(v === 'public' ? 'made_public' : 'made_private')); }
+          catch (err) { toast(t('save_err')); }
+        }
         if (v === 'delete') {
           const ok = await actionSheet(t('delete_q') + ' ' + t('delete_sub'), [{ label: t('delete'), danger: true, value: true }]);
-          if (ok) { await removeRecipe(r); popPage(); renderTab(); toast(t('deleted')); }
+          if (ok) {
+            try { await removeRecipe(r); popPage(); renderTab(); toast(t('deleted')); }
+            catch (err) { toast(t('save_err')); }
+          }
         }
         break;
       }
       case 'avatar': {
+        const cloudUser = auth.mode === 'user';
+        const cur = myAvatar();
         const opts = [{ label: '📷 ' + t('camera'), value: 'camera' }, { label: '🖼 ' + t('gallery'), value: 'gallery' }];
-        if (settings.avatar) opts.push({ label: t('remove_photo'), value: 'remove', danger: true });
+        if (cur) opts.push({ label: t('remove_photo'), value: 'remove', danger: true });
         const v = await actionSheet(t('change_photo'), opts);
         if (!v) break;
-        if (v === 'remove') { await deletePhoto(settings.avatar); settings.avatar = null; }
-        else {
+        let next = null;
+        if (v !== 'remove') {
           const [f] = await pickFiles(v);
           if (!f) break;
-          const ref = await storePhoto(f, 400);
-          if (settings.avatar) await deletePhoto(settings.avatar);
-          settings.avatar = ref;
+          try { next = await storePhoto(f, 400); } catch (err) { toast(t('save_err')); break; }
         }
-        saveSettings(); renderTab(); break;
+        if (cur) await deletePhoto(cur);
+        if (cloudUser) await saveProfile({ avatar_url: next });
+        else { settings.avatar = next; saveSettings(); }
+        renderTab(); break;
       }
       case 'export': exportBackup(); break;
       case 'import': importBackup(); break;
-      case 'restore-seed': restoreSeed(); break;
     }
   });
 
@@ -1438,25 +1648,46 @@ function bindEvents() {
     if (e.target.id === 'scale') {
       settings.scale = SCALES[Number(e.target.value)]; saveSettings(); applyAppearance();
     }
-    if (e.target.id === 'profile-name') { settings.name = e.target.value; saveSettings(); }
+    if (e.target.id === 'profile-name') {
+      if (auth.mode === 'user') {
+        clearTimeout(bindEvents._n);
+        bindEvents._n = setTimeout(() => saveProfile({ display_name: e.target.value.trim() }), 600);
+      } else { settings.name = e.target.value; saveSettings(); }
+    }
     if (e.target.id === 'ai-code') { settings.aiCode = e.target.value.trim(); saveSettings(); }
   });
   document.addEventListener('keydown', e => {
     if (e.target.id === 'q' && e.key === 'Enter') e.target.blur();
+    if (e.key === 'Escape' && !$('#sheet-root').firstChild && !$('#auth-root').firstChild) popPage();
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAppearance);
+}
+
+/* ---------------- Login prompt ---------------- */
+async function promptLogin() {
+  const v = await actionSheet(t('login_prompt'), [{ label: t('login'), value: true }]);
+  if (v) openAuth({ view: 'signin' });
 }
 
 /* ---------------- Boot ---------------- */
 (async function boot() {
   applyAppearance();
   bindEvents();
-  try { await loadData(); }
+  bindAuthEvents();
+  try { await initCloud(); await loadData(); }
   catch (e) {
     $('#tabs-root').innerHTML = `<div class="view"><div class="empty"><div class="big">⚠️</div><h3>Error</h3><p>${esc(e.message || e)}</p></div></div>`;
     return;
   }
   renderTab();
+  // First visit (or after signing out): ask to sign in. "Continue as guest" is remembered.
+  if (auth.mode === 'guest' && !guestChosen()) openAuth({ view: 'signin', dismissible: false });
+  // Pick up recipes other people published while the app was in the background.
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (auth.mode !== 'local' && hiddenAt && Date.now() - hiddenAt > 120000 && !state.pages.length) { await loadUserData(); renderTab(); }
+  });
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
