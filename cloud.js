@@ -290,6 +290,7 @@ function renderAuth(msg = '', kind = '') {
       <div class="auth-links">${links}</div>
       ${view === 'newpass' ? '' : `<button class="btn auth-guest" data-auth="guest">${esc(t('auth_guest'))}</button>
       <p class="hint center">${esc(t('auth_guest_hint'))}</p>`}
+      <p class="hint center"><a href="privacy.html" target="_blank" rel="noopener">${esc(t('privacy'))}</a></p>
     </div></div>`;
 }
 

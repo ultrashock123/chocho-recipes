@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.7.1';
+const APP_VERSION = '1.7.2';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,7 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    privacy: 'Поверителност', delete_data: 'Изтриване на данни',
     kpi_mine: 'твои',
     timer_test_toast: '🔔 Проба на алармата — ако не чуваш, увеличи звука на телефона',
     top_title: 'Топ рецепти',
@@ -217,6 +218,7 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    privacy: 'Privacy', delete_data: 'Delete my data',
     kpi_mine: 'yours',
     timer_test_toast: '🔔 Alarm test — if you hear nothing, turn the phone volume up',
     top_title: 'Top recipes',
@@ -906,7 +908,7 @@ function settingsView() {
       <button class="row row-btn" data-action="logout"><span class="lbl"><span class="ic" style="background:#E0393E">⎋</span>${esc(t('logout'))}</span></button>
     </div>
     <p class="hint">${esc(t('cloud_hint'))}</p>` : ''}
-    <p class="footer-note">👨‍🍳 ${esc(t('about'))} ${APP_VERSION}<br>${esc(t('install_hint'))}</p>
+    <p class="footer-note">👨‍🍳 ${esc(t('about'))} ${APP_VERSION}<br>${esc(t('install_hint'))}<br><a href="privacy.html" target="_blank" rel="noopener">${esc(t('privacy'))}</a> · <a href="delete-data.html" target="_blank" rel="noopener">${esc(t('delete_data'))}</a></p>
   </section>`;
 }
 
