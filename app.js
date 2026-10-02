@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.6.2';
+const APP_VERSION = '1.6.3';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -2062,9 +2062,7 @@ const scoreLabel = avg => { const s = score10(avg); return t(s >= 9 ? 'score_exc
 const ratingsOn = () => auth.mode !== 'local';
 function canRate(type, id) {
   if (auth.mode !== 'user') return false;
-  if (type === 'user') return id !== auth.user.id;
-  const r = byId(id);
-  return !(r && isMine(r));
+  return type === 'recipe' || id !== auth.user.id; // any recipe (also your own); not yourself as a user
 }
 function scoreHTML(type, id) {
   const st = statOf(type, id);

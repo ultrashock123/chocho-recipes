@@ -214,7 +214,7 @@ create policy "removed: admin deletes" on public.removed_recipes
 
 -- ═════════ v1.6: оценки (1–5 звезди) за рецепти и потребители ═════════
 -- Един глас на човек за всяка рецепта и за всеки потребител (може да се променя или да се оттегли).
--- Не можеш да оценяваш собствена рецепта или себе си.
+-- Можеш да оценяваш всяка рецепта (и своя), но не и себе си като потребител.
 create table if not exists public.ratings (
   rater_id    uuid not null references auth.users(id) on delete cascade,
   target_type text not null check (target_type in ('recipe', 'user')),
@@ -236,14 +236,14 @@ create policy "ratings: insert own" on public.ratings
   for insert to authenticated with check (
     rater_id = auth.uid()
     and ((target_type = 'user' and target_id <> auth.uid()::text)
-      or (target_type = 'recipe' and not exists (select 1 from public.recipes r where r.id = target_id and r.owner_id = auth.uid())))
+      or target_type = 'recipe')
   );
 drop policy if exists "ratings: update own" on public.ratings;
 create policy "ratings: update own" on public.ratings
   for update to authenticated using (rater_id = auth.uid()) with check (
     rater_id = auth.uid()
     and ((target_type = 'user' and target_id <> auth.uid()::text)
-      or (target_type = 'recipe' and not exists (select 1 from public.recipes r where r.id = target_id and r.owner_id = auth.uid())))
+      or target_type = 'recipe')
   );
 drop policy if exists "ratings: delete own" on public.ratings;
 create policy "ratings: delete own" on public.ratings
