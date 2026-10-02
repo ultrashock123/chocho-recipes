@@ -4,5 +4,5 @@
 window.RIFAY_CONFIG = {
   supabaseUrl: 'https://bstgdpesqkltbfeuxfnk.supabase.co',
   supabaseAnonKey: 'sb_publishable_VUiJJPRMSUb8xzj6TsmDSQ_efIfwWlY',
-  providers: { google: false, facebook: false }, // сложи true, след като настроиш входа (виж SETUP.md)
+  providers: { google: false, facebook: true }, // сложи true, след като настроиш входа (виж SETUP.md)
 };

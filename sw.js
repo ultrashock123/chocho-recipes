@@ -1,6 +1,6 @@
 /* Offline support: app shell is precached, recipe photos are cached on first use
    and warmed in the background after install. */
-const VERSION = 'v1.7.2';
+const VERSION = 'v1.8.0';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'images-v1';
 const SHELL_FILES = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'config.js', 'recipes.json', 'manifest.webmanifest',
