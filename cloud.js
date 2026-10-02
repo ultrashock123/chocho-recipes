@@ -190,6 +190,15 @@ const cloud = {
     if (error) throw error;
     return data || [];
   },
+  async adminActivity() {
+    const { data, error } = await sb.rpc('admin_activity');
+    if (error) throw error;
+    return data || [];
+  },
+  async adminSetBlocked(userId, blocked) {
+    const { error } = await sb.rpc('admin_set_blocked', { p_user: userId, p_blocked: blocked });
+    if (error) throw error;
+  },
   async adminTotals() {
     const { data, error } = await sb.rpc('admin_totals');
     if (error) throw error;
@@ -341,6 +350,7 @@ function renderAuth(msg = '', kind = '') {
 
 function authError(e) {
   const m = String((e && e.message) || e || '').toLowerCase();
+  if (m.includes('banned')) return t('auth_err_banned');
   if (m.includes('invalid login')) return t('auth_err_creds');
   if (m.includes('not confirmed')) return t('auth_err_confirm');
   if (m.includes('already registered') || m.includes('already been registered')) return t('auth_err_exists');

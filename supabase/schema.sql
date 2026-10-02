@@ -352,3 +352,100 @@ revoke all on function public.admin_user_stats() from public, anon;
 revoke all on function public.admin_totals() from public, anon;
 grant execute on function public.admin_user_stats() to authenticated;
 grant execute on function public.admin_totals() to authenticated;
+
+-- ═════════ v1.11: блокиране на потребители + активност по дни (само за администратор) ═════════
+create table if not exists public.blocked_users (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  blocked_at timestamptz not null default now(),
+  blocked_by uuid references auth.users(id) on delete set null
+);
+alter table public.blocked_users enable row level security;   -- без политики: достъп само през функциите по-долу
+
+create or replace function public.is_blocked() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.blocked_users b where b.user_id = auth.uid());
+$$;
+revoke all on function public.is_blocked() from public, anon;
+grant execute on function public.is_blocked() to authenticated;
+
+-- Блокиран потребител не може да пише никъде (рестриктивните правила се прилагат ЗАЕДНО с останалите).
+do $$
+declare t text;
+begin
+  foreach t in array array['recipes', 'recipe_states', 'recipe_shares', 'friends', 'ratings', 'messages', 'profiles'] loop
+    execute format('drop policy if exists "blocked: no insert" on public.%I', t);
+    execute format('create policy "blocked: no insert" on public.%I as restrictive for insert to authenticated with check (not public.is_blocked())', t);
+    execute format('drop policy if exists "blocked: no update" on public.%I', t);
+    execute format('create policy "blocked: no update" on public.%I as restrictive for update to authenticated using (not public.is_blocked())', t);
+  end loop;
+end $$;
+
+-- Блокиране / отблокиране. Не може да блокираш себе си или друг администратор.
+create or replace function public.admin_set_blocked(p_user uuid, p_blocked boolean) returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.app_admins a where a.user_id = auth.uid()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_user = auth.uid() or exists (select 1 from public.app_admins a where a.user_id = p_user) then
+    raise exception 'cannot block an admin' using errcode = '42501';
+  end if;
+  if p_blocked then
+    insert into public.blocked_users (user_id, blocked_by) values (p_user, auth.uid()) on conflict (user_id) do nothing;
+    update auth.users set banned_until = now() + interval '100 years' where id = p_user;   -- не може да влиза отново
+    delete from auth.sessions where user_id = p_user;                                        -- излиза от всички устройства
+  else
+    delete from public.blocked_users where user_id = p_user;
+    update auth.users set banned_until = null where id = p_user;
+  end if;
+end $$;
+revoke all on function public.admin_set_blocked(uuid, boolean) from public, anon;
+grant execute on function public.admin_set_blocked(uuid, boolean) to authenticated;
+
+-- Списъкът с потребители вече казва кой е блокиран и кой е администратор (променя се типът на резултата → drop).
+drop function if exists public.admin_user_stats();
+create function public.admin_user_stats()
+returns table (r_id uuid, r_email text, r_name text, r_provider text, r_created timestamptz, r_last_login timestamptz,
+               r_confirmed timestamptz, r_recipes bigint, r_cooked bigint, r_blocked boolean, r_is_admin boolean)
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.app_admins a where a.user_id = auth.uid()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query
+    select u.id, u.email::text, p.display_name, coalesce(u.raw_app_meta_data->>'provider', 'email'),
+           u.created_at, u.last_sign_in_at, u.email_confirmed_at,
+           (select count(*) from public.recipes r where r.owner_id = u.id),
+           (select coalesce(sum(s.cooked), 0)::bigint from public.recipe_states s where s.user_id = u.id),
+           exists (select 1 from public.blocked_users b where b.user_id = u.id),
+           exists (select 1 from public.app_admins a2 where a2.user_id = u.id)
+    from auth.users u
+    left join public.profiles p on p.id = u.id
+    order by u.created_at desc;
+end $$;
+revoke all on function public.admin_user_stats() from public, anon;
+grant execute on function public.admin_user_stats() to authenticated;
+
+-- Активност по дни за последните 30 дни: активни потребители и брой действия.
+create or replace function public.admin_activity()
+returns table (r_day date, r_active bigint, r_recipes bigint, r_messages bigint, r_ratings bigint, r_cooked bigint)
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.app_admins a where a.user_id = auth.uid()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query
+    with days as (select generate_series(current_date - 29, current_date, interval '1 day')::date as d),
+    ev as (
+      select r.owner_id as uid, r.created_at::date as d, 'recipe'::text as k from public.recipes r
+      union all select m.sender_id, m.created_at::date, 'message' from public.messages m
+      union all select x.rater_id, x.created_at::date, 'rating' from public.ratings x
+      union all select s.user_id, s.updated_at::date, 'cooked' from public.recipe_states s where s.cooked > 0
+    )
+    select days.d, count(distinct ev.uid), count(*) filter (where ev.k = 'recipe'), count(*) filter (where ev.k = 'message'),
+           count(*) filter (where ev.k = 'rating'), count(*) filter (where ev.k = 'cooked')
+    from days left join ev on ev.d = days.d
+    group by days.d order by days.d;
+end $$;
+revoke all on function public.admin_activity() from public, anon;
+grant execute on function public.admin_activity() to authenticated;

@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.11.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,11 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    admin_activity_title: 'Активност по дни', admin_active_per_day: 'Активни потребители на ден (последните 30 дни)', admin_actions_per_day: 'Действия на ден', admin_activity_none: 'Още няма данни за активност (обнови базата със schema.sql).',
+    admin_s_recipes: 'Рецепти', admin_s_messages: 'Съобщения', admin_s_ratings: 'Оценки', admin_s_cooked: 'Готвения',
+    admin_blocked: 'Блокиран', admin_badge: 'админ', admin_block: 'Блокирай', admin_unblock: 'Отблокирай',
+    admin_block_q: n => `Да блокирам ли „${n}“? Няма да може да влиза и да добавя нищо.`, admin_unblock_q: n => `Да отблокирам ли „${n}“?`,
+    admin_blocked_done: 'Потребителят е блокиран', admin_unblocked_done: 'Потребителят е отблокиран', auth_err_banned: 'Този акаунт е блокиран от администратора.',
     admin_section: 'Администратор', admin_users: 'Потребители', admin_users_sub: 'Кой се е регистрирал', admin_total: 'Регистрирани', admin_today: 'Днес', admin_7d: '7 дни', admin_30d: '30 дни',
     admin_chart: 'Регистрации — последните 30 дни', admin_activity: 'Активност', admin_active7: 'Влизали (7 дни)', admin_with_recipes: 'Със свои рецепти', admin_cooking: 'Готвили',
     admin_unconfirmed: 'Непотвърден имейл', admin_providers: 'Начин на вход', admin_list: 'Всички потребители', admin_search: 'Търси по име или имейл…',
@@ -236,6 +241,11 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    admin_activity_title: 'Activity by day', admin_active_per_day: 'Active users per day (last 30 days)', admin_actions_per_day: 'Actions per day', admin_activity_none: 'No activity data yet (update the database with schema.sql).',
+    admin_s_recipes: 'Recipes', admin_s_messages: 'Messages', admin_s_ratings: 'Ratings', admin_s_cooked: 'Cooked',
+    admin_blocked: 'Blocked', admin_badge: 'admin', admin_block: 'Block', admin_unblock: 'Unblock',
+    admin_block_q: n => `Block “${n}”? They will not be able to sign in or add anything.`, admin_unblock_q: n => `Unblock “${n}”?`,
+    admin_blocked_done: 'User blocked', admin_unblocked_done: 'User unblocked', auth_err_banned: 'This account has been blocked by the administrator.',
     admin_section: 'Admin', admin_users: 'Users', admin_users_sub: 'Who has registered', admin_total: 'Registered', admin_today: 'Today', admin_7d: '7 days', admin_30d: '30 days',
     admin_chart: 'Registrations — last 30 days', admin_activity: 'Activity', admin_active7: 'Signed in (7 days)', admin_with_recipes: 'With own recipes', admin_cooking: 'Cooked',
     admin_unconfirmed: 'Unconfirmed email', admin_providers: 'Sign-in method', admin_list: 'All users', admin_search: 'Search by name or email…',

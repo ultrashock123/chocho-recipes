@@ -759,3 +759,15 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .adm-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text) !important; opacity: .75; }
 .adm-nums { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: .8rem; font-weight: 700; color: var(--text-2); }
 @media (max-width: 380px) { .adm-kpis { grid-template-columns: repeat(2, 1fr); } }
+.adm-chart-title { margin: 0 0 8px; font-size: .8rem; font-weight: 700; color: var(--text-2); }
+.adm-bar.stack { flex-direction: column-reverse; justify-content: flex-start; gap: 1px; }
+.adm-bar.stack i { border-radius: 2px; }
+.adm-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: .76rem; color: var(--text-2); }
+.adm-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.adm-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.adm-badge { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; vertical-align: 1px; }
+.adm-badge.admin { color: #6C5CE7; background: rgba(108, 92, 231, .14); }
+.adm-badge.blocked { color: var(--danger); background: rgba(224, 57, 62, .12); }
+.adm-user.is-blocked { opacity: .65; }
+.adm-act { margin-top: 4px; padding: 4px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
+.adm-act.danger { color: var(--danger); background: rgba(224, 57, 62, .1); }
