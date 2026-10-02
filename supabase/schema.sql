@@ -157,3 +157,57 @@ drop policy if exists "images: delete own folder" on storage.objects;
 create policy "images: delete own folder" on storage.objects
   for delete to authenticated
   using (bucket_id = 'recipe-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ═════════ v1.5: готвене, приятели, скриване/изтриване, администратор ═════════
+
+-- Колко пъти е сготвена рецептата, кога за последно, и дали е скрита за този потребител.
+alter table public.recipe_states add column if not exists cooked integer not null default 0;
+alter table public.recipe_states add column if not exists last_cooked timestamptz;
+alter table public.recipe_states add column if not exists hidden boolean not null default false;
+
+-- Изпращане може за всяка рецепта (оригинални и чужди публични), затова махаме връзката към таблицата с рецепти.
+-- Достъп до ЛИЧНА рецепта дава само ред, създаден от нейния собственик (виж правилото за четене на recipes).
+alter table public.recipe_shares drop constraint if exists recipe_shares_recipe_id_fkey;
+
+-- Приятели: бърз списък с хора, на които често изпращаш рецепти.
+create table if not exists public.friends (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  friend_id  uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, friend_id),
+  check (user_id <> friend_id)
+);
+alter table public.friends enable row level security;
+grant select, insert, delete on public.friends to authenticated;
+drop policy if exists "friends: all own" on public.friends;
+create policy "friends: all own" on public.friends
+  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Администратор (собственикът на сайта): може да премахва оригинални рецепти за всички.
+-- Добавя се само с SQL (виж make-admin.sql); от приложението не може да се назначи.
+create table if not exists public.app_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade
+);
+alter table public.app_admins enable row level security;
+grant select on public.app_admins to authenticated;
+drop policy if exists "admins: read own" on public.app_admins;
+create policy "admins: read own" on public.app_admins
+  for select to authenticated using (user_id = auth.uid());
+
+create table if not exists public.removed_recipes (
+  recipe_id  text primary key,
+  removed_by uuid references auth.users(id) on delete set null,
+  removed_at timestamptz not null default now()
+);
+alter table public.removed_recipes enable row level security;
+grant select on public.removed_recipes to anon, authenticated;
+grant insert, delete on public.removed_recipes to authenticated;
+drop policy if exists "removed: everyone reads" on public.removed_recipes;
+create policy "removed: everyone reads" on public.removed_recipes
+  for select to anon, authenticated using (true);
+drop policy if exists "removed: admin writes" on public.removed_recipes;
+create policy "removed: admin writes" on public.removed_recipes
+  for insert to authenticated with check (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));
+drop policy if exists "removed: admin deletes" on public.removed_recipes;
+create policy "removed: admin deletes" on public.removed_recipes
+  for delete to authenticated using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));

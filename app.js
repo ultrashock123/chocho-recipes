@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.5.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,20 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    cooked_btn: 'Сготвих я', cooked_n: n => `Сготвена ×${n}`, cooked_toast: n => `🍳 Сготвена ${n} ${n === 1 ? 'път' : 'пъти'}`,
+    cooked_again: 'Сготвих я пак (+1)', cooked_minus: 'Намали с 1', cooked_reset: 'Не е пробвана (нулирай)',
+    portions: 'Порции', serv_reset: n => `Върни на ${n}`, serv_hint: 'Количествата се преизчисляват',
+    timer_custom: 'друго…', timer_custom_q: 'Колко минути?', timer_done: 'Времето изтече!', timer_stop: 'Спри', timer_title: 'Таймер', timer_cancel: 'Спри таймера',
+    del_link: 'Изтрий рецептата…', captcha_ask: 'Препиши кода, за да потвърдиш',
+    del_title_delete: 'Изтриване на рецептата', del_msg_delete: 'Рецептата ще бъде изтрита завинаги, заедно със снимките ѝ.', del_btn_delete: 'Изтрий завинаги',
+    del_title_global: 'Премахване за всички', del_msg_global: 'Това е оригинална рецепта. Ще бъде премахната за ВСИЧКИ потребители.', del_btn_global: 'Премахни за всички',
+    del_title_hide: 'Скриване на рецептата', del_msg_hide: 'Рецептата ще бъде скрита само за теб. Можеш да я върнеш от Настройки.', del_btn_hide: 'Скрий',
+    hidden_done: 'Рецептата е скрита', hidden_title: 'Скрити рецепти', restore_hidden: 'Върни скритите рецепти', restored_n: n => n ? `Върнати ${n} рецепти` : 'Няма скрити рецепти',
+    friends_title: 'Приятели', friends_hint: 'Добави хора със звездичка ☆, за да ги избираш бързо, когато изпращаш рецепти.', friends_empty: 'Още нямаш приятели — потърси по име и натисни ☆.',
+    friend_toggle: 'Приятел', friend_added: n => `${n} е добавен в приятели`,
+    share_hint_private: 'Рецептата е лична: получателят ще я вижда, но не може да я променя. Намират се само потребители, които са разрешили името им да се вижда.',
+    share_hint_public: 'Получателят ще я намери в „Споделени с мен“. Намират се само потребители, които са разрешили името им да се вижда.',
+    shared_by: n => `Споделена с теб от ${n}`, st_cooked: 'сготвени', st_cook_times: 'готвения',
     scope_mine: 'Мои рецепти', scope_shared: 'Споделени с мен', mine_sub: 'Всичко, което си добавил', shared_sub: 'Изпратени от други',
     share_menu: 'Изпрати на потребител', share_title: 'Изпрати рецепта', share_search_ph: 'Търси потребител по име…',
     share_hint: 'Получателят ще вижда рецептата (дори да е лична), но не може да я променя. Намират се само потребители, които са разрешили името им да се вижда.',
@@ -196,6 +210,20 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    cooked_btn: 'I cooked it', cooked_n: n => `Cooked ×${n}`, cooked_toast: n => `🍳 Cooked ${n} time${n === 1 ? '' : 's'}`,
+    cooked_again: 'Cooked again (+1)', cooked_minus: 'Decrease by 1', cooked_reset: 'Not tried (reset)',
+    portions: 'Servings', serv_reset: n => `Back to ${n}`, serv_hint: 'Amounts are recalculated',
+    timer_custom: 'other…', timer_custom_q: 'How many minutes?', timer_done: 'Time is up!', timer_stop: 'Stop', timer_title: 'Timer', timer_cancel: 'Stop the timer',
+    del_link: 'Delete recipe…', captcha_ask: 'Type the code to confirm',
+    del_title_delete: 'Delete recipe', del_msg_delete: 'The recipe will be deleted forever, with its photos.', del_btn_delete: 'Delete forever',
+    del_title_global: 'Remove for everyone', del_msg_global: 'This is an original recipe. It will be removed for ALL users.', del_btn_global: 'Remove for all',
+    del_title_hide: 'Hide recipe', del_msg_hide: 'The recipe will be hidden only for you. You can bring it back from Settings.', del_btn_hide: 'Hide',
+    hidden_done: 'Recipe hidden', hidden_title: 'Hidden recipes', restore_hidden: 'Bring back hidden recipes', restored_n: n => n ? `Restored ${n} recipes` : 'No hidden recipes',
+    friends_title: 'Friends', friends_hint: 'Add people with the star ☆ to pick them quickly when sending recipes.', friends_empty: 'No friends yet — search by name and tap ☆.',
+    friend_toggle: 'Friend', friend_added: n => `${n} added to friends`,
+    share_hint_private: 'The recipe is private: the recipient can see it but not change it. Only users who allow their name to be shown can be found.',
+    share_hint_public: 'The recipient will find it in “Shared with me”. Only users who allow their name to be shown can be found.',
+    shared_by: n => `Shared with you by ${n}`, st_cooked: 'cooked', st_cook_times: 'times cooked',
     scope_mine: 'My recipes', scope_shared: 'Shared with me', mine_sub: 'Everything you added', shared_sub: 'Sent by others',
     share_menu: 'Send to a user', share_title: 'Send recipe', share_search_ph: 'Search user by name…',
     share_hint: 'The recipient can see the recipe (even if private) but cannot change it. Only users who allow their name to be shown can be found.',
@@ -422,12 +450,17 @@ const byId = id => state.recipes.find(r => r.id === id);
 
 let seeds = [];   // the original recipes from recipes.json: public and read-only
 let custom = [];  // recipes made by people: own ones (+ other people's public ones when the cloud is on)
-let states = {};  // per-user { [recipeId]: { favorite, tried } }
+let states = {};  // per-user { [recipeId]: { favorite, tried, cooked, lastCooked, hidden } }
+let incoming = {}; // recipes sent to me: { recipeId: { from } }
+let friends = [];  // my quick list of people to send recipes to
+let removed = new Set(); // originals the admin removed for everybody
+let isAdmin = false;
+let hiddenCount = 0;
 
 const isMine = r => auth.mode === 'user' ? r.owner === auth.user.id : auth.mode === 'local' && !r.seed;
 const canWrite = () => auth.mode !== 'guest';
 const stateKey = () => auth.mode === 'user' ? auth.user.id : auth.mode;
-const storable = r => Object.fromEntries(Object.entries(r).filter(([k]) => !k.startsWith('_') && !['favorite', 'tried', 'owner', 'ownerName'].includes(k)));
+const storable = r => Object.fromEntries(Object.entries(r).filter(([k]) => !k.startsWith('_') && !['favorite', 'tried', 'owner', 'ownerName', 'cooked', 'lastCooked', 'sharedWithMe', 'sharedBy'].includes(k)));
 
 // Recipes made on this device (used when accounts are off, and as the source for "upload to my account").
 const localBackend = {
@@ -448,7 +481,7 @@ async function loadData() {
 async function loadUserData() {
   const key = stateKey();
   states = (await DB.get('kv', 'states:' + key)) || {};
-  if (auth.mode === 'local') custom = await localBackend.list();
+  if (auth.mode === 'local') { custom = await localBackend.list(); incoming = {}; friends = []; isAdmin = false; }
   else {
     try {
       custom = await cloud.list();
@@ -459,6 +492,14 @@ async function loadUserData() {
       custom = (await DB.get('kv', 'cache:' + key)) || [];
       toast(t('load_offline'));
     }
+    // Optional parts: they exist only after the v1.5 database update, so failures are not fatal.
+    try { removed = new Set(await cloud.removedList()); await DB.put('kv', [...removed], 'removed'); }
+    catch (e) { removed = new Set((await DB.get('kv', 'removed')) || []); }
+    if (auth.mode === 'user') {
+      incoming = await cloud.incoming().catch(() => ({}));
+      friends = await cloud.listFriends().catch(() => []);
+      isAdmin = await cloud.isAdmin().catch(() => false);
+    } else { incoming = {}; friends = []; isAdmin = false; }
   }
   settingsView.localCount = auth.mode === 'user' ? (await localBackend.list()).length : 0;
   compose();
@@ -468,18 +509,27 @@ async function reloadAll() {
   await loadUserData();
   renderTab();
 }
-// Merge originals + people's recipes with this user's favorites/tried marks.
+// Merge originals + people's recipes with this user's marks (favorite, cooked, hidden) and what was sent to them.
 function compose() {
   // An original the user replaced with their own edited version is hidden for them.
-  const hidden = new Set(custom.filter(r => r.basedOn && isMine(r)).map(r => r.basedOn));
-  const list = [...seeds.filter(s => !hidden.has(s.id)), ...custom];
-  list.forEach(r => {
+  const replaced = new Set(custom.filter(r => r.basedOn && isMine(r)).map(r => r.basedOn));
+  const all = [...seeds.filter(s => !replaced.has(s.id) && !removed.has(s.id)), ...custom];
+  const visible = [];
+  hiddenCount = 0;
+  all.forEach(r => {
     const st = states[r.id] || {};
+    if (st.hidden) { hiddenCount++; return; }
     r.favorite = !!st.favorite;
-    r.tried = st.tried === undefined || st.tried === null ? !!r.seedTried : !!st.tried;
+    r.cooked = st.cooked || 0;
+    r.lastCooked = st.lastCooked || null;
+    r.tried = r.cooked > 0 || (st.tried === undefined || st.tried === null ? !!r.seedTried : !!st.tried);
+    const inc = incoming[r.id];
+    r.sharedWithMe = !!inc && !isMine(r);
+    r.sharedBy = inc ? inc.from : '';
     indexRecipe(r);
+    visible.push(r);
   });
-  state.recipes = list;
+  state.recipes = visible;
 }
 function normalizeSeed(r, created) {
   return {
@@ -532,9 +582,23 @@ async function setState(r, patch) {
   states[r.id] = next;
   r.favorite = !!next.favorite;
   if ('tried' in patch) r.tried = !!next.tried;
+  if ('cooked' in patch) { r.cooked = next.cooked || 0; r.lastCooked = next.lastCooked || null; r.tried = r.cooked > 0 || !!next.tried; }
   try { await DB.put('kv', states, 'states:' + stateKey()); } catch (e) {}
   if (auth.mode === 'user') { try { await cloud.saveState(r.id, next); } catch (e) { toast(t('save_err')); } }
 }
+// "I cooked it": counts how many times a recipe was cooked; cooking marks it as tried automatically.
+async function markCooked(r, delta) {
+  const n = Math.max(0, (r.cooked || 0) + delta);
+  const patch = { cooked: n, lastCooked: delta > 0 ? Date.now() : (states[r.id] && states[r.id].lastCooked) || null };
+  if (n > 0) patch.tried = true;
+  await setState(r, patch);
+}
+async function resetCooked(r) { await setState(r, { cooked: 0, tried: false, lastCooked: null }); }
+const cookStats = () => {
+  let recipes = 0, times = 0;
+  for (const s of Object.values(states)) if (s && s.cooked > 0) { recipes++; times += s.cooked; }
+  return { recipes, times };
+};
 
 // Copy recipes made on this phone (before accounts) into the signed-in account.
 async function uploadLocalRecipes(visibility) {
@@ -731,7 +795,7 @@ function favoritesView() {
 }
 
 function settingsView() {
-  const n = state.recipes.length, f = state.recipes.filter(r => r.favorite).length, tr = state.recipes.filter(r => r.tried).length;
+  const n = state.recipes.length, f = state.recipes.filter(r => r.favorite).length, cs = cookStats();
   const scaleIdx = Math.max(0, SCALES.indexOf(Number(settings.scale)));
   const seg = (key, opts) => `<div class="segmented">${opts.map(([v, label]) =>
     `<button class="${settings[key] === v ? 'active' : ''}" data-set="${key}" data-val="${v}">${esc(label)}</button>`).join('')}</div>`;
@@ -760,7 +824,8 @@ function settingsView() {
     <div class="stats">
       <div class="stat"><b>${n}</b><span>${esc(t('st_recipes'))}</span></div>
       <div class="stat"><b>${f}</b><span>${esc(t('st_fav'))}</span></div>
-      <div class="stat"><b>${tr}</b><span>${esc(t('st_tried'))}</span></div>
+      <div class="stat"><b>${cs.recipes}</b><span>${esc(t("st_cooked"))}</span></div>
+      <div class="stat"><b>${cs.times}</b><span>${esc(t("st_cook_times"))}</span></div>
     </div>
 
     <div class="group-label">${esc(t('appearance'))}</div>
@@ -790,8 +855,10 @@ function settingsView() {
       <button class="row row-btn" data-action="import"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬇︎</span>${esc(t('import'))}</span></button>
     </div>
     <p class="hint">${esc(t('storage_hint'))}</p>` : ''}
+    ${hiddenCount ? `<div class="group-label">${esc(t('hidden_title'))}</div><div class="group"><button class="row row-btn" data-action="restore-hidden"><span class="lbl"><span class="ic" style="background:#2FA36B">↺</span>${esc(t('restore_hidden'))} (${hiddenCount})</span></button></div>` : ''}
     ${auth.mode === 'user' ? `<div class="group-label">${esc(t('account'))}</div>
     <div class="group">
+      <button class="row row-btn" data-action="friends"><span class="lbl"><span class="ic" style="background:#F2A33C">👥</span>${esc(t('friends_title'))} (${friends.length})</span></button>
       ${settingsView.localCount ? `<button class="row row-btn" data-action="upload-local"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬆︎</span>${esc(t('upload_local'))} (${settingsView.localCount})</span></button>` : ''}
       <button class="row row-btn" data-action="logout"><span class="lbl"><span class="ic" style="background:#E0393E">⎋</span>${esc(t('logout'))}</span></button>
     </div>
@@ -859,23 +926,48 @@ async function setWakeLock(on) {
   } catch (e) { wakeLock = null; }
 }
 
-function detailHTML(r, tabSel = 'ing') {
+const canSend = r => auth.mode === 'user' && (r.seed || r.visibility !== 'private' || isMine(r));
+const cookLabel = r => r.cooked > 0 ? t('cooked_n', r.cooked) : r.tried ? t('tried') : t('cooked_btn');
+
+function cookBarHTML() {
+  return `<div class="cook-bar">
+    <div class="cook-timer">
+      <span class="cook-time" data-timer-display>0:00</span>
+      <button class="round" data-timer="toggle" data-timer-toggle aria-label="Start / pause">▶</button>
+      <button class="round" data-timer="reset" data-timer-reset aria-label="Reset">↺</button>
+      <button class="round wide" data-timer="add" aria-label="+1 min">+1'</button>
+    </div>
+    <div class="cook-presets">${[5, 10, 15, 20, 30, 45, 60].map(m => `<button class="chip small" data-timer-set="${m}">${m}'</button>`).join('')}
+      <button class="chip small" data-timer="custom">${esc(t('timer_custom'))}</button></div>
+    <button class="btn primary cook-done" data-action="cooked-done">✅ ${esc(t('cooked_btn'))}</button>
+  </div>`;
+}
+
+function detailHTML(r, tabSel = 'ing', serv = null) {
   const imgs = r.images || [];
   const cats = (r.categories || []).map(c => `<span class="pill">${CAT[c]?.emoji || ''} ${esc(catName(c))}</span>`).join('');
   const hasIng = (r.ingredients || []).length > 0;
   const steps = String(r.steps || '').trim();
-  const paras = steps ? steps.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean) : [];
+  let paras = steps ? steps.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean) : [];
+  if (paras.length === 1) { const lines = paras[0].split('\n').map(s => s.trim()).filter(Boolean); if (lines.length > 2) paras = lines; }
   const stepsHTML = !steps ? `<p class="muted">${esc(t('no_method'))}</p>` :
-    paras.length > 1 ? `<div class="steps">${paras.map(p => `<div class="step">${linkify(esc(p)).replace(/\n/g, '<br>')}</div>`).join('')}</div>` :
+    paras.length > 1 ? `<div class="steps">${paras.map((p, i) => `<div class="step" data-step="${i}">${linkify(esc(p)).replace(/\n/g, '<br>')}</div>`).join('')}</div>` :
       `<div class="prose">${linkify(esc(steps))}</div>`;
   const isSub = x => x.startsWith('## ') || (x.length < 60 && /:\s*$/.test(x));
+  const base = baseServings(r);
+  const target = base ? Math.min(99, Math.max(1, serv || base)) : null;
+  const factor = base ? target / base : 1;
   const ingHTML = hasIng ? `<ul class="ing-list">${r.ingredients.map((x, i) => isSub(x)
     ? `<li class="sub">${esc(x.replace(/^## /, '').replace(/:\s*$/, ''))}</li>`
-    : `<li data-ing="${i}"><span class="tick">${I.check}</span><span>${esc(x)}</span></li>`).join('')}</ul>` :
+    : `<li data-ing="${i}"><span class="tick">${I.check}</span><span>${esc(scaleLine(x, factor))}</span></li>`).join('')}</ul>` :
     `<p class="muted">${esc(t('no_ingredients'))}</p>`;
+  const servBar = base && hasIng ? `<div class="serv-bar"><span>🍽 ${esc(t('portions'))}</span>
+      <div class="stepper"><button data-serv="-1" aria-label="-">−</button><b>${target}</b><button data-serv="1" aria-label="+">+</button></div>
+      <button class="chip small" data-serv-mult="0.5">½×</button><button class="chip small" data-serv-mult="2">2×</button>
+      ${target !== base ? `<button class="link" data-serv="reset">${esc(t('serv_reset', base))}</button>` : `<small class="muted">${esc(t('serv_hint'))}</small>`}</div>` : '';
   const meta = [
     r.time ? `<span class="pill">⏱ ${esc(r.time)}</span>` : '',
-    r.servings ? `<span class="pill">🍽 ${esc(r.servings)} ${esc(t('servings'))}</span>` : '',
+    r.servings ? `<span class="pill">🍽 ${target || esc(r.servings)} ${esc(t('servings'))}</span>` : '',
   ].join('');
 
   return `<div class="detail" data-id="${esc(r.id)}">
@@ -895,30 +987,32 @@ function detailHTML(r, tabSel = 'ing') {
       <h1 class="detail-title">${esc(r.title)}</h1>
       <div class="meta-row">
         <span class="pill accent">${COLL[r.collection]?.emoji || ''} ${esc(collName(r.collection))}</span>
-        ${r.tried ? `<span class="pill ok">✓ ${esc(t('tried'))}</span>` : ''}
+        ${r.cooked > 0 ? `<span class="pill ok">🍳 ${esc(t('cooked_n', r.cooked))}</span>` : r.tried ? `<span class="pill ok">✓ ${esc(t('tried'))}</span>` : ''}
         ${r.source ? `<span class="pill">✍️ ${esc(r.source)}</span>` : ''}
         ${!r.seed && auth.mode !== 'local' ? `<span class="pill ${r.visibility === 'private' ? 'warn' : ''}">${esc(t(r.visibility === 'private' ? 'pill_private' : 'pill_public'))}</span>` : ''}
-        ${r.sharedWithMe ? `<span class="pill accent">📥 ${esc(t('shared_pill'))}</span>` : ''}
+        ${r.sharedWithMe ? `<span class="pill accent">📥 ${esc(r.sharedBy ? t('shared_by', r.sharedBy) : t('shared_pill'))}</span>` : ''}
         ${r.ownerName && !isMine(r) ? `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>` : ''}
         ${isMine(r) && !r.seed && auth.mode === 'user' && showsAuthor() && myName() ? `<span class="pill">👤 ${esc(t('by_author', myName()))}</span>` : ''}
         ${meta}${cats}
       </div>
       <div class="quick-actions">
-        <button class="qa ${r.tried ? 'on' : ''}" data-action="toggle-tried">${I.check}<span>${esc(t('tried'))}</span></button>
+        <button class="qa ${r.tried ? 'on' : ''}" data-action="cooked">${I.check}<span>${esc(cookLabel(r))}</span></button>
         <button class="qa" data-action="cook">${I.flame}<span>${esc(t('cook'))}</span></button>
         <button class="qa" data-action="share">${I.share}<span>${esc(t('share'))}</span></button>
-        ${isMine(r) && auth.mode === 'user' ? `<button class="qa" data-action="send-user">${I.send}<span>${esc(t('send_user'))}</span></button>` : ''}
+        ${canSend(r) ? `<button class="qa" data-action="send-user">${I.send}<span>${esc(t('send_user'))}</span></button>` : ''}
       </div>
       <div class="segmented">
         <button class="${tabSel === 'ing' ? 'active' : ''}" data-dtab="ing">${esc(t('ingredients'))}${hasIng ? ` · ${r.ingredients.filter(x => !isSub(x)).length}` : ''}</button>
         <button class="${tabSel === 'method' ? 'active' : ''}" data-dtab="method">${esc(t('method'))}</button>
       </div>
-      <div data-dpane="ing" class="${tabSel === 'ing' ? '' : 'hidden'}">${ingHTML}</div>
+      <div data-dpane="ing" class="${tabSel === 'ing' ? '' : 'hidden'}">${servBar}${ingHTML}</div>
       <div data-dpane="method" class="${tabSel === 'method' ? '' : 'hidden'}">${stepsHTML}</div>
       ${r.notes ? `<div class="notes-box"><h4>📝 ${esc(t('notes'))}</h4><div class="prose">${linkify(esc(r.notes))}</div></div>` : ''}
       ${videosHTML(r)}
       ${otherLinks(r).length ? `<h3 class="block-title">${esc(t('links'))}</h3><div class="links">${otherLinks(r).map(linkCard).join('')}</div>` : ''}
+      ${canWrite() ? `<div class="danger-zone"><button class="danger-link" data-action="delete-flow">${esc(t('del_link'))}</button></div>` : ''}
     </div>
+    ${cookBarHTML()}
   </div>`;
 }
 /* ----- YouTube ----- */
@@ -971,19 +1065,23 @@ function openRecipe(id) {
   const el = pushPage(detailHTML(r), { onClose: () => { setWakeLock(false); } });
   bindGallery(el);
 }
-function refreshDetail(r) {
+function refreshDetail(r, serv) {
   const p = topPage();
   if (!p) return;
+  if (serv !== undefined) { if (serv) p.el.dataset.servings = serv; else delete p.el.dataset.servings; }
   const cur = p.el.querySelector('[data-dtab].active')?.dataset.dtab || 'ing';
   const scroll = p.el.scrollTop;
   const cook = p.el.classList.contains('cook-mode');
   const done = [...p.el.querySelectorAll('[data-ing].done')].map(li => li.dataset.ing);
-  p.el.innerHTML = detailHTML(r, cur);
+  const doneSteps = [...p.el.querySelectorAll('[data-step].done')].map(li => li.dataset.step);
+  p.el.innerHTML = detailHTML(r, cur, Number(p.el.dataset.servings) || null);
   if (cook) p.el.classList.add('cook-mode');
   done.forEach(i => p.el.querySelector(`[data-ing="${i}"]`)?.classList.add('done'));
+  doneSteps.forEach(i => p.el.querySelector(`[data-step="${i}"]`)?.classList.add('done'));
   p.el.scrollTop = scroll;
   hydratePhotos(p.el);
   bindGallery(p.el);
+  renderTimer();
 }
 function bindGallery(el) {
   const g = el.querySelector('#gallery');
@@ -1184,13 +1282,7 @@ function openEditor(existing, prefill = null) {
     }
     if (b.dataset.rmLink !== undefined) { b.closest('.link-row').remove(); return; }
     if (b.dataset.action === 'delete-recipe') {
-      const ok = await actionSheet(t('delete_q') + ' ' + t('delete_sub'), [{ label: t('delete'), danger: true, value: true }]);
-      if (!ok) return;
-      saved = true;
-      added.forEach(deletePhoto);
-      await removeRecipe(existing);
-      popPage();
-      setTimeout(() => { popPage(); renderTab(); toast(t('deleted')); }, 120);
+      await deleteFlow(existing);
     }
   });
 }
@@ -1505,6 +1597,22 @@ async function importBackup() {
 function bindEvents() {
   document.addEventListener('click', async e => {
     if (e.target.id === 'pages-root') { popPage(); return; } // click on the dimmed backdrop (desktop)
+    const tm = e.target.closest('[data-timer],[data-timer-set]');
+    if (tm) { handleTimerClick(tm); return; }
+    const sv = e.target.closest('[data-serv],[data-serv-mult]');
+    if (sv) {
+      const page = sv.closest('.page'), rr = byId(page.querySelector('.detail').dataset.id), base = baseServings(rr);
+      const cur = Number(page.dataset.servings) || base;
+      let next = cur;
+      if (sv.dataset.serv === 'reset') next = base;
+      else if (sv.dataset.serv) next = cur + Number(sv.dataset.serv);
+      else next = Math.round(cur * Number(sv.dataset.servMult));
+      next = Math.max(1, Math.min(99, next));
+      refreshDetail(rr, next === base ? null : next);
+      return;
+    }
+    const stepEl = e.target.closest('.step[data-step]');
+    if (stepEl && !e.target.closest('a')) { stepEl.classList.toggle('done'); haptic(); return; }
     const favBtn = e.target.closest('[data-fav]');
     if (favBtn) {
       e.stopPropagation();
@@ -1565,6 +1673,8 @@ function bindEvents() {
     switch (act) {
       case 'new-recipe': if (canWrite()) askAddMode(); else promptLogin(); break;
       case 'login': openAuth({ view: 'signin' }); break;
+      case 'friends': openPeoplePage(null); break;
+      case 'restore-hidden': await restoreHidden(); break;
       case 'send-user': if (r) openSharePage(r); break;
       case 'save-name': {
         const name = ($('#display-name').value || '').trim();
@@ -1610,12 +1720,28 @@ function bindEvents() {
         a.classList.toggle('on', r.favorite); renderTab(); break;
       case 'toggle-tried':
         haptic(); await setState(r, { tried: !r.tried }); refreshDetail(r); renderTab(); break;
+      case 'cooked': {
+        if (!r.cooked && !r.tried) { haptic(); await markCooked(r, 1); toast(t('cooked_toast', r.cooked)); }
+        else {
+          const opts = [{ label: '🍳 ' + t('cooked_again'), value: 'add' }];
+          if (r.cooked > 0) opts.push({ label: '− ' + t('cooked_minus'), value: 'sub' });
+          opts.push({ label: t('cooked_reset'), danger: true, value: 'reset' });
+          const v = await actionSheet(r.cooked > 0 ? t('cooked_n', r.cooked) : t('tried'), opts);
+          if (v === 'add') { await markCooked(r, 1); toast(t('cooked_toast', r.cooked)); }
+          else if (v === 'sub') await markCooked(r, -1);
+          else if (v === 'reset') await resetCooked(r);
+          else break;
+        }
+        refreshDetail(r); renderTab(); break;
+      }
+      case 'cooked-done': haptic(); await markCooked(r, 1); toast(t('cooked_toast', r.cooked)); refreshDetail(r); renderTab(); break;
+      case 'delete-flow': if (r) await deleteFlow(r); break;
       case 'cook': {
         const page = a.closest('.page');
         const on = !page.classList.contains('cook-mode');
         page.classList.toggle('cook-mode', on);
         a.classList.toggle('on', on);
-        setWakeLock(on);
+        setWakeLock(on); renderTimer();
         toast(t(on ? 'cook_on' : 'cook_off'));
         break;
       }
@@ -1637,7 +1763,6 @@ function bindEvents() {
           opts.push(r.visibility === 'private'
             ? { label: t('make_public'), value: 'public' } : { label: t('make_private'), value: 'private' });
         }
-        if (mine) opts.push({ label: '🗑 ' + t('delete'), value: 'delete', danger: true });
         const v = await actionSheet(r.title, opts);
         if (v === 'edit') openEditor(r);
         if (v === 'share') openSharePage(r);
@@ -1649,13 +1774,6 @@ function bindEvents() {
           r.visibility = v;
           try { await saveRecipe(r); refreshDetail(r); renderTab(); toast(t(v === 'public' ? 'made_public' : 'made_private')); }
           catch (err) { toast(t('save_err')); }
-        }
-        if (v === 'delete') {
-          const ok = await actionSheet(t('delete_q') + ' ' + t('delete_sub'), [{ label: t('delete'), danger: true, value: true }]);
-          if (ok) {
-            try { await removeRecipe(r); popPage(); renderTab(); toast(t('deleted')); }
-            catch (err) { toast(t('save_err')); }
-          }
         }
         break;
       }
@@ -1717,63 +1835,271 @@ function bindEvents() {
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAppearance);
 }
 
-/* ---------------- Send a recipe to another user ---------------- */
-const personRow = (p, action, label, cls = '') => `<div class="person" data-uid="${esc(p.id)}">
+/* ---------------- Servings scaling ---------------- */
+const baseServings = r => { const m = String(r.servings || '').match(/\d+/); return m ? Math.max(1, parseInt(m[0], 10)) : null; };
+const FRAC_CHARS = { '½': 0.5, '¼': 0.25, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875 };
+function fmtQty(x) {
+  if (x >= 10) return String(Math.round(x));
+  const whole = Math.floor(x + 1e-9);
+  const frac = x - whole;
+  const marks = [[0, ''], [0.125, '⅛'], [0.25, '¼'], [1 / 3, '⅓'], [0.375, '⅜'], [0.5, '½'], [0.625, '⅝'], [2 / 3, '⅔'], [0.75, '¾'], [0.875, '⅞'], [1, '']];
+  let best = null;
+  for (const m of marks) if (Math.abs(frac - m[0]) < 0.06 && (!best || Math.abs(frac - m[0]) < Math.abs(frac - best[0]))) best = m;
+  if (best) {
+    const w = whole + (best[0] === 1 ? 1 : 0);
+    return best[1] ? (w ? `${w}${best[1]}` : best[1]) : String(w || 0);
+  }
+  return String(Math.round(x * 10) / 10).replace('.', ',');
+}
+// Multiplies the quantities in an ingredient line. Text in (parentheses), percentages, temperatures and times are left alone.
+const QTY_RE = /\([^)]*\)|(\d+)\s*-\s*([½¼¾⅓⅔⅛⅜⅝⅞])|(\d+)\s+(\d+)\/(\d+)|(\d+)\/(\d+)|(\d+)\s*([½¼¾⅓⅔⅛⅜⅝⅞])|([½¼¾⅓⅔⅛⅜⅝⅞])|(\d+(?:[.,]\d+)?)(?!\d)(?!\s*(?:%|°|мин|минути|час|часа|см\b|cm\b|mm\b|мм\b|сек))/g;
+const PLURALS = [[/малка глава/g, 'малки глави'], [/голяма глава/g, 'големи глави'], [/(?<!\p{L})глава(?!\p{L})/gu, 'глави'], [/(?<!\p{L})яйце(?!\p{L})/gu, 'яйца'], [/(?<!\p{L})скилидка(?!\p{L})/gu, 'скилидки']];
+function scaleLine(line, f) {
+  if (!f || Math.abs(f - 1) < 1e-9) return line;
+  const out = scaleNumbers(line, f);
+  return f > 1 ? PLURALS.reduce((s, [re, to]) => s.replace(re, to), out) : out;
+}
+function scaleNumbers(line, f) {
+  return line.replace(QTY_RE, (m, a1, a2, b1, b2, b3, c1, c2, d1, d2, e1, g1) => {
+    if (m[0] === '(') return m;
+    let v;
+    if (a1 !== undefined) v = +a1 + FRAC_CHARS[a2];
+    else if (b1 !== undefined) v = +b1 + (+b2) / (+b3);
+    else if (c1 !== undefined) v = (+c1) / (+c2);
+    else if (d1 !== undefined) v = +d1 + FRAC_CHARS[d2];
+    else if (e1 !== undefined) v = FRAC_CHARS[e1];
+    else v = parseFloat(g1.replace(',', '.'));
+    return fmtQty(v * f);
+  });
+}
+
+/* ---------------- Delete (hidden + captcha) ---------------- */
+const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function confirmCaptcha(title, message, confirmLabel) {
+  return new Promise(resolve => {
+    const code = Array.from({ length: 5 }, () => CAPTCHA_CHARS[Math.floor(Math.random() * CAPTCHA_CHARS.length)]).join('');
+    const root = $('#sheet-root');
+    root.innerHTML = `<div class="backdrop"></div><div class="dialog" role="dialog" aria-modal="true">
+      <h3>${esc(title)}</h3><p>${esc(message)}</p>
+      <div class="captcha" aria-hidden="true">${[...code].map(c => `<i style="transform:rotate(${Math.round(Math.random() * 24 - 12)}deg) translateY(${Math.round(Math.random() * 6 - 3)}px)">${c}</i>`).join('')}</div>
+      <label class="hint" for="cap-in" style="margin:6px 0 4px">${esc(t('captcha_ask'))}</label>
+      <input id="cap-in" class="field" autocomplete="off" autocapitalize="characters" maxlength="5" style="text-align:center;letter-spacing:.3em;font-weight:700;border-radius:12px;box-shadow:inset 0 0 0 1px var(--line)">
+      <div class="dialog-actions"><button class="btn" data-cap="cancel">${esc(t('cancel'))}</button>
+        <button class="btn danger" data-cap="ok" disabled>${esc(confirmLabel)}</button></div></div>`;
+    const input = $('#cap-in', root), ok = $('[data-cap="ok"]', root);
+    const close = v => { root.innerHTML = ''; resolve(v); };
+    input.addEventListener('input', () => { ok.disabled = input.value.trim().toUpperCase() !== code; });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && !ok.disabled) close(true); });
+    root.querySelector('.backdrop').onclick = () => close(false);
+    $('[data-cap="cancel"]', root).onclick = () => close(false);
+    ok.onclick = () => { if (!ok.disabled) close(true); };
+    setTimeout(() => input.focus(), 120);
+  });
+}
+// What "delete" means depends on whose recipe it is.
+function deleteKind(r) {
+  if (isMine(r)) return 'delete';
+  if (r.seed && isAdmin) return 'global';
+  return 'hide';
+}
+async function deleteFlow(r) {
+  const kind = deleteKind(r);
+  const ok = await confirmCaptcha(t('del_title_' + kind), t('del_msg_' + kind), t('del_btn_' + kind));
+  if (!ok) return false;
+  try {
+    if (kind === 'delete') await removeRecipe(r);
+    else if (kind === 'global') { await cloud.removeGlobal(r.id); removed.add(r.id); compose(); }
+    else { await setState(r, { hidden: true }); compose(); }
+  } catch (e) { toast(t('save_err')); return false; }
+  while (state.pages.length) popPage();
+  renderTab();
+  toast(t(kind === 'hide' ? 'hidden_done' : 'deleted'));
+  return true;
+}
+async function restoreHidden() {
+  const ids = Object.keys(states).filter(id => states[id] && states[id].hidden);
+  for (const id of ids) {
+    states[id] = Object.assign({}, states[id], { hidden: false });
+    if (auth.mode === 'user') { try { await cloud.saveState(id, states[id]); } catch (e) {} }
+  }
+  try { await DB.put('kv', states, 'states:' + stateKey()); } catch (e) {}
+  compose(); renderTab(); toast(t('restored_n', ids.length));
+}
+
+/* ---------------- Cook timer with alarm ---------------- */
+const timer = { endAt: 0, total: 0, running: false, paused: 0, ringing: false };
+let audioCtx = null, ringTimer = null, tickTimer = null;
+const TIMER_KEY = 'chocho.timer';
+function saveTimer() { try { localStorage.setItem(TIMER_KEY, JSON.stringify({ endAt: timer.endAt, total: timer.total, running: timer.running, paused: timer.paused })); } catch (e) {} }
+function loadTimer() { try { Object.assign(timer, JSON.parse(localStorage.getItem(TIMER_KEY) || '{}')); } catch (e) {} }
+const timerLeft = () => timer.running ? Math.max(0, timer.endAt - Date.now()) : timer.paused;
+const fmtTime = ms => { const s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
+function unlockAudio() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+function beep(freq = 880, dur = 0.18, when = 0) {
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + when;
+  o.type = 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+function startTimer(ms) {
+  unlockAudio();
+  timer.total = ms; timer.running = true; timer.endAt = Date.now() + ms; timer.paused = 0; timer.ringing = false;
+  saveTimer(); startTick(); renderTimer();
+}
+function pauseTimer() { if (!timer.running) return; timer.paused = timerLeft(); timer.running = false; saveTimer(); renderTimer(); }
+function resumeTimer() { if (timer.running || !timer.paused) return; unlockAudio(); timer.running = true; timer.endAt = Date.now() + timer.paused; saveTimer(); startTick(); renderTimer(); }
+function resetTimer() { timer.running = false; timer.paused = 0; timer.endAt = 0; timer.total = 0; stopAlarm(); saveTimer(); renderTimer(); }
+function addTime(ms) {
+  if (timer.running) timer.endAt += ms; else timer.paused += ms;
+  timer.total += ms; saveTimer(); renderTimer();
+}
+function startTick() { clearInterval(tickTimer); tickTimer = setInterval(tickTimerFn, 250); }
+function tickTimerFn() {
+  if (timer.running && Date.now() >= timer.endAt) { timer.running = false; timer.paused = 0; timer.endAt = 0; saveTimer(); ring(); }
+  renderTimer();
+  if (!timer.running && !timer.ringing) clearInterval(tickTimer);
+}
+function ring() {
+  if (timer.ringing) return;
+  timer.ringing = true;
+  const pattern = () => {
+    [0, 0.25, 0.5].forEach(w => beep(988, 0.18, w));
+    try { navigator.vibrate && navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {}
+  };
+  pattern(); ringTimer = setInterval(pattern, 1600);
+  $('#alarm-root').innerHTML = `<div class="alarm"><div class="alarm-card"><div class="alarm-bell">⏰</div><h2>${esc(t('timer_done'))}</h2>
+    <button class="btn primary" data-timer="stop">${esc(t('timer_stop'))}</button></div></div>`;
+  renderTimer();
+}
+function stopAlarm() {
+  clearInterval(ringTimer); ringTimer = null; timer.ringing = false;
+  const a = $('#alarm-root'); if (a) a.innerHTML = '';
+  try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
+}
+function renderTimer() {
+  const left = timerLeft(), active = timer.running || timer.paused > 0;
+  document.querySelectorAll('[data-timer-display]').forEach(el => { el.textContent = active ? fmtTime(left) : '0:00'; el.classList.toggle('run', timer.running); });
+  document.querySelectorAll('[data-timer-toggle]').forEach(el => { el.textContent = timer.running ? '⏸' : '▶'; el.disabled = !active; });
+  document.querySelectorAll('[data-timer-reset]').forEach(el => { el.disabled = !active; });
+  const pill = $('#timer-pill');
+  if (pill) {
+    const hide = !active || !!document.querySelector('.cook-mode');
+    pill.classList.toggle('hidden', hide);
+    pill.textContent = '⏱ ' + fmtTime(left);
+  }
+}
+function handleTimerClick(b) {
+  if (b.dataset.timerSet) { startTimer(Number(b.dataset.timerSet) * 60000); return; }
+  switch (b.dataset.timer) {
+    case 'toggle': if (timer.running) pauseTimer(); else resumeTimer(); break;
+    case 'reset': resetTimer(); break;
+    case 'add': unlockAudio(); addTime(60000); break;
+    case 'stop': stopAlarm(); break;
+    case 'custom': {
+      const v = window.prompt(t('timer_custom_q'), '25');
+      const m = parseFloat(String(v || '').replace(',', '.'));
+      if (m > 0 && m < 1000) startTimer(Math.round(m * 60000));
+      break;
+    }
+    case 'pill': actionSheet(t('timer_title') + ' ' + fmtTime(timerLeft()), [{ label: t('timer_cancel'), danger: true, value: true }])
+      .then(v => { if (v) resetTimer(); }); break;
+  }
+}
+function initTimer() {
+  loadTimer();
+  if (timer.running) {
+    if (Date.now() < timer.endAt) startTick();
+    else if (Date.now() - timer.endAt < 3600e3) { timer.running = false; timer.paused = 0; saveTimer(); ring(); }
+    else resetTimer();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tickTimerFn(); });
+  renderTimer();
+}
+
+/* ---------------- Send a recipe to another user / manage friends ---------------- */
+const personRow = (p, { fav, action, label, cls = '' }) => `<div class="person" data-uid="${esc(p.id)}">
   <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
   <b>${esc(p.display_name || '')}</b>
-  <button class="btn ${cls}" style="width:auto;height:36px;padding:0 14px" data-person="${action}">${esc(label)}</button></div>`;
+  ${fav === undefined ? '' : `<button class="star ${fav ? 'on' : ''}" data-person="star" aria-label="${esc(t('friend_toggle'))}" title="${esc(t('friend_toggle'))}">${fav ? '★' : '☆'}</button>`}
+  ${action ? `<button class="btn ${cls}" style="width:auto;height:36px;padding:0 14px" data-person="${action}">${esc(label)}</button>` : ''}</div>`;
 
-function openSharePage(r) {
-  let timer = null, shared = [];
+// r = the recipe to send; null = only manage the friends list.
+function openPeoplePage(r) {
+  let timerId = null, sent = [], found = [];
+  const isFriend = id => friends.some(f => f.id === id);
+  const hint = !r ? t('friends_hint') : r.visibility === 'private' ? t('share_hint_private') : t('share_hint_public');
   const el = pushPage(`<div class="navbar">
       <button class="nav-btn" data-action="back">${esc(t('close'))}</button>
-      <h1>📤 ${esc(t('share_title'))}</h1><span style="width:60px"></span>
+      <h1>${r ? '📤 ' + esc(t('share_title')) : '👥 ' + esc(t('friends_title'))}</h1><span style="width:60px"></span>
     </div>
     <div class="form">
-      <p class="muted" style="margin:10px 4px 4px"><b>${esc(r.title)}</b></p>
-      <p class="hint" style="margin:0 4px 12px">${esc(t('share_hint'))}</p>
+      ${r ? `<p class="muted" style="margin:10px 4px 4px"><b>${esc(r.title)}</b></p>` : ''}
+      <p class="hint" style="margin:${r ? '0' : '10px'} 4px 12px">${esc(hint)}</p>
       <div class="group"><label class="search-field" style="border-radius:0;background:transparent">${I.search}
-        <input id="share-q" type="search" autocomplete="off" placeholder="${esc(t('share_search_ph'))}"></label></div>
-      <div id="share-results" class="people"></div>
-      <div class="group-label">${esc(t('share_with'))}</div>
-      <div id="share-list" class="people"></div>
+        <input id="pp-q" type="search" autocomplete="off" placeholder="${esc(t('share_search_ph'))}"></label></div>
+      <div id="pp-results" class="people"></div>
+      <div class="group-label">⭐ ${esc(t('friends_title'))}</div>
+      <div id="pp-friends" class="people"></div>
+      ${r ? `<div class="group-label">${esc(t('share_with'))}</div><div id="pp-sent" class="people"></div>` : ''}
     </div>`, { modal: true });
-  const results = $('#share-results', el), list = $('#share-list', el);
-  const draw = () => {
-    list.innerHTML = shared.length ? shared.map(p => personRow(p, 'remove', t('share_remove'), 'danger')).join('')
+  const $r = $('#pp-results', el), $f = $('#pp-friends', el), $s = r ? $('#pp-sent', el) : null;
+  const known = id => friends.find(p => p.id === id) || found.find(p => p.id === id) || sent.find(p => p.id === id);
+  const drawFriends = () => {
+    $f.innerHTML = friends.length
+      ? friends.map(p => personRow(p, r && !sent.some(s => s.id === p.id) ? { fav: true, action: 'send', label: t('share_send'), cls: 'primary' } : { fav: true })).join('')
+      : `<p class="hint">${esc(t('friends_empty'))}</p>`;
+    hydratePhotos($f);
+  };
+  const drawSent = () => {
+    if (!$s) return;
+    $s.innerHTML = sent.length ? sent.map(p => personRow(p, { action: 'unsend', label: t('share_remove'), cls: 'danger' })).join('')
       : `<p class="hint">${esc(t('share_nobody'))}</p>`;
-    hydratePhotos(list);
+    hydratePhotos($s);
   };
-  cloud.listShares(r.id).then(s => { shared = s; draw(); }).catch(() => { draw(); toast(t('save_err')); });
+  const drawResults = () => {
+    const q = $('#pp-q', el).value.trim();
+    if (q.length < 2) { $r.innerHTML = q ? `<p class="hint">${esc(t('share_min'))}</p>` : ''; return; }
+    const rows = found.filter(p => !(r && sent.some(s => s.id === p.id)));
+    $r.innerHTML = rows.length
+      ? rows.map(p => personRow(p, Object.assign({ fav: isFriend(p.id) }, r ? { action: 'send', label: t('share_send'), cls: 'primary' } : {}))).join('')
+      : `<p class="hint">${esc(t('share_none'))}</p>`;
+    hydratePhotos($r);
+  };
+  const redraw = () => { drawFriends(); drawSent(); drawResults(); };
+  if (r) cloud.listShares(r.id).then(s => { sent = s; redraw(); }).catch(() => toast(t('save_err')));
+  redraw();
+
   const search = async () => {
-    const q = $('#share-q', el).value;
-    if (q.trim().length < 2) { results.innerHTML = q.trim() ? `<p class="hint">${esc(t('share_min'))}</p>` : ''; return; }
-    try {
-      const found = (await cloud.searchUsers(q)).filter(p => !shared.some(s => s.id === p.id));
-      results.innerHTML = found.length ? found.map(p => personRow(p, 'add', t('share_send'), 'primary')).join('')
-        : `<p class="hint">${esc(t('share_none'))}</p>`;
-      hydratePhotos(results);
-      results._found = found;
-    } catch (e) { toast(t('save_err')); }
+    const q = $('#pp-q', el).value;
+    if (q.trim().length >= 2) { try { found = await cloud.searchUsers(q); } catch (e) { toast(t('save_err')); found = []; } }
+    drawResults();
   };
-  el.addEventListener('input', e => { if (e.target.id === 'share-q') { clearTimeout(timer); timer = setTimeout(search, 250); } });
+  el.addEventListener('input', e => { if (e.target.id === 'pp-q') { clearTimeout(timerId); timerId = setTimeout(search, 250); } });
   el.addEventListener('click', async e => {
     const b = e.target.closest('[data-person]');
     if (!b) return;
-    const id = b.closest('.person').dataset.uid;
+    const id = b.closest('.person').dataset.uid, p = known(id);
     try {
-      if (b.dataset.person === 'add') {
-        const p = (results._found || []).find(x => x.id === id);
-        await cloud.share(r.id, id);
-        shared.push(p); draw(); search(); toast(t('share_done', p.display_name));
-      } else {
-        await cloud.unshare(r.id, id);
-        shared = shared.filter(x => x.id !== id); draw(); toast(t('share_removed'));
+      if (b.dataset.person === 'star') {
+        if (isFriend(id)) { await cloud.removeFriend(id); friends = friends.filter(f => f.id !== id); }
+        else { await cloud.addFriend(id); friends.push(p); toast(t('friend_added', p.display_name)); }
+      } else if (b.dataset.person === 'send') {
+        await cloud.share(r.id, id); sent.push(p); toast(t('share_done', p.display_name));
+      } else if (b.dataset.person === 'unsend') {
+        await cloud.unshare(r.id, id); sent = sent.filter(x => x.id !== id); toast(t('share_removed'));
       }
+      redraw();
     } catch (err) { toast(t('save_err')); }
   });
-  setTimeout(() => $('#share-q', el).focus(), 350);
+  setTimeout(() => $('#pp-q', el).focus(), 350);
 }
+const openSharePage = openPeoplePage;
 
 /* ---------------- Login prompt ---------------- */
 async function promptLogin() {
@@ -1786,6 +2112,7 @@ async function promptLogin() {
   applyAppearance();
   bindEvents();
   bindAuthEvents();
+  initTimer();
   try { await initCloud(); await loadData(); }
   catch (e) {
     $('#tabs-root').innerHTML = `<div class="view"><div class="empty"><div class="big">⚠️</div><h3>Error</h3><p>${esc(e.message || e)}</p></div></div>`;

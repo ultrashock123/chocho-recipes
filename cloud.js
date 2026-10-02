@@ -95,14 +95,8 @@ const cloud = {
       const { data: ps } = await sb.from('profiles').select('id,display_name').in('id', ids);
       (ps || []).forEach(p => { names[p.id] = p.display_name; });
     }
-    const incoming = new Set();
-    if (auth.mode === 'user') {
-      const { data: sh } = await sb.from('recipe_shares').select('recipe_id').eq('shared_with', auth.user.id);
-      (sh || []).forEach(s => incoming.add(s.recipe_id));
-    }
     return data.map(row => Object.assign({}, row.data, {
       id: row.id, owner: row.owner_id, ownerName: names[row.owner_id] || '', visibility: row.visibility,
-      sharedWithMe: incoming.has(row.id) && row.owner_id !== (auth.user && auth.user.id),
       basedOn: row.based_on || null, createdAt: Date.parse(row.created_at), updatedAt: Date.parse(row.updated_at), seed: false,
     }));
   },
@@ -130,13 +124,17 @@ const cloud = {
     if (error) throw error;
     return data || [];
   },
+  async profilesByIds(ids) {
+    if (!ids.length) return {};
+    const { data } = await sb.from('profiles').select('id,display_name,avatar_url').in('id', ids);
+    return Object.fromEntries((data || []).map(p => [p.id, p]));
+  },
+  // Sends I made for a recipe (any recipe: originals and other people's too).
   async listShares(recipeId) {
-    const { data, error } = await sb.from('recipe_shares').select('shared_with').eq('recipe_id', recipeId);
+    const { data, error } = await sb.from('recipe_shares').select('shared_with').eq('recipe_id', recipeId).eq('owner_id', auth.user.id);
     if (error) throw error;
     const ids = (data || []).map(s => s.shared_with);
-    if (!ids.length) return [];
-    const { data: ps } = await sb.from('profiles').select('id,display_name,avatar_url').in('id', ids);
-    const byId = Object.fromEntries((ps || []).map(p => [p.id, p]));
+    const byId = await this.profilesByIds(ids);
     return ids.map(id => byId[id] || { id, display_name: '…', avatar_url: null });
   },
   async share(recipeId, userId) {
@@ -144,19 +142,67 @@ const cloud = {
     if (error) throw error;
   },
   async unshare(recipeId, userId) {
-    const { error } = await sb.from('recipe_shares').delete().eq('recipe_id', recipeId).eq('shared_with', userId);
+    const { error } = await sb.from('recipe_shares').delete().eq('recipe_id', recipeId).eq('shared_with', userId).eq('owner_id', auth.user.id);
+    if (error) throw error;
+  },
+  // Recipes sent to me: { recipeId: { from: 'Name' } }
+  async incoming() {
+    const { data, error } = await sb.from('recipe_shares').select('recipe_id,owner_id,created_at').eq('shared_with', auth.user.id);
+    if (error) throw error;
+    const byId = await this.profilesByIds([...new Set((data || []).map(s => s.owner_id))]);
+    const out = {};
+    (data || []).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .forEach(s => { out[s.recipe_id] = { from: (byId[s.owner_id] || {}).display_name || '' }; });
+    return out;
+  },
+  async listFriends() {
+    const { data, error } = await sb.from('friends').select('friend_id').eq('user_id', auth.user.id);
+    if (error) throw error;
+    const ids = (data || []).map(f => f.friend_id);
+    const byId = await this.profilesByIds(ids);
+    return ids.map(id => byId[id] || { id, display_name: '…', avatar_url: null });
+  },
+  async addFriend(id) {
+    const { error } = await sb.from('friends').upsert({ user_id: auth.user.id, friend_id: id });
+    if (error) throw error;
+  },
+  async removeFriend(id) {
+    const { error } = await sb.from('friends').delete().eq('user_id', auth.user.id).eq('friend_id', id);
+    if (error) throw error;
+  },
+  // Originals removed for everybody by the site admin.
+  async removedList() {
+    const { data, error } = await sb.from('removed_recipes').select('recipe_id');
+    if (error) throw error;
+    return (data || []).map(r => r.recipe_id);
+  },
+  async isAdmin() {
+    const { data, error } = await sb.from('app_admins').select('user_id').eq('user_id', auth.user.id).maybeSingle();
+    return !error && !!data;
+  },
+  async removeGlobal(id) {
+    const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id });
     if (error) throw error;
   },
   async loadStates() {
-    const { data, error } = await sb.from('recipe_states').select('recipe_id,favorite,tried').eq('user_id', auth.user.id);
-    if (error) throw error;
-    return Object.fromEntries(data.map(s => [s.recipe_id, { favorite: !!s.favorite, tried: s.tried }]));
+    let res = await sb.from('recipe_states').select('recipe_id,favorite,tried,cooked,last_cooked,hidden').eq('user_id', auth.user.id);
+    // Before the v1.5 database update the extra columns do not exist: fall back to the basic ones.
+    if (res.error) res = await sb.from('recipe_states').select('recipe_id,favorite,tried').eq('user_id', auth.user.id);
+    if (res.error) throw res.error;
+    return Object.fromEntries(res.data.map(s => [s.recipe_id, {
+      favorite: !!s.favorite, tried: s.tried, cooked: s.cooked || 0, hidden: !!s.hidden,
+      lastCooked: s.last_cooked ? Date.parse(s.last_cooked) : null,
+    }]));
   },
   async saveState(id, st) {
-    const { error } = await sb.from('recipe_states').upsert({
+    const row = {
       user_id: auth.user.id, recipe_id: id, favorite: !!st.favorite, tried: st.tried === undefined ? null : st.tried,
       updated_at: new Date().toISOString(),
-    });
+    };
+    if (st.cooked !== undefined) row.cooked = st.cooked || 0;
+    if (st.lastCooked) row.last_cooked = new Date(st.lastCooked).toISOString();
+    if (st.hidden !== undefined) row.hidden = !!st.hidden;
+    const { error } = await sb.from('recipe_states').upsert(row);
     if (error) throw error;
   },
   async uploadPhoto(blob) {
