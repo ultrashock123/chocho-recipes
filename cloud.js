@@ -138,7 +138,7 @@ const cloud = {
     return ids.map(id => byId[id] || { id, display_name: '…', avatar_url: null });
   },
   async share(recipeId, userId) {
-    const { error } = await sb.from('recipe_shares').upsert({ recipe_id: recipeId, owner_id: auth.user.id, shared_with: userId });
+    const { error } = await sb.from('recipe_shares').upsert({ recipe_id: recipeId, owner_id: auth.user.id, shared_with: userId }, { ignoreDuplicates: true });
     if (error) throw error;
   },
   async unshare(recipeId, userId) {
@@ -163,7 +163,7 @@ const cloud = {
     return ids.map(id => byId[id] || { id, display_name: '…', avatar_url: null });
   },
   async addFriend(id) {
-    const { error } = await sb.from('friends').upsert({ user_id: auth.user.id, friend_id: id });
+    const { error } = await sb.from('friends').upsert({ user_id: auth.user.id, friend_id: id }, { ignoreDuplicates: true });
     if (error) throw error;
   },
   async removeFriend(id) {
@@ -181,7 +181,7 @@ const cloud = {
     return !error && !!data;
   },
   async removeGlobal(id) {
-    const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id });
+    const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id }, { ignoreDuplicates: true });
     if (error) throw error;
   },
   // Ratings: public totals (view) + my own votes.
