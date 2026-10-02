@@ -315,3 +315,40 @@ do $$ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+
+-- ═════════ v1.10: администраторски панел (кой се е регистрирал) ═════════
+-- Функциите отговарят САМО на потребители от таблицата app_admins (виж make-admin.sql). За всички останали — отказ.
+create or replace function public.admin_user_stats()
+returns table (r_id uuid, r_email text, r_name text, r_provider text, r_created timestamptz, r_last_login timestamptz,
+               r_confirmed timestamptz, r_recipes bigint, r_cooked bigint)
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.app_admins a where a.user_id = auth.uid()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query
+    select u.id, u.email::text, p.display_name, coalesce(u.raw_app_meta_data->>'provider', 'email'),
+           u.created_at, u.last_sign_in_at, u.email_confirmed_at,
+           (select count(*) from public.recipes r where r.owner_id = u.id),
+           (select coalesce(sum(s.cooked), 0)::bigint from public.recipe_states s where s.user_id = u.id)
+    from auth.users u
+    left join public.profiles p on p.id = u.id
+    order by u.created_at desc;
+end $$;
+
+create or replace function public.admin_totals()
+returns table (t_users bigint, t_recipes bigint, t_messages bigint, t_ratings bigint, t_friends bigint)
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.app_admins a where a.user_id = auth.uid()) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query
+    select (select count(*) from auth.users), (select count(*) from public.recipes),
+           (select count(*) from public.messages), (select count(*) from public.ratings), (select count(*) from public.friends);
+end $$;
+
+revoke all on function public.admin_user_stats() from public, anon;
+revoke all on function public.admin_totals() from public, anon;
+grant execute on function public.admin_user_stats() to authenticated;
+grant execute on function public.admin_totals() to authenticated;

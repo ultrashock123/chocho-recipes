@@ -734,3 +734,28 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .person-pick { width: 100%; text-align: left; }
 .person-pick .chev { margin-left: auto; color: var(--text-3); font-size: 1.4rem; }
 @media (min-width: 900px) { .chat-toast { left: calc(50% + 48px); } .msg { max-width: 68%; } .page.chat-page { height: 100vh; } }
+
+/* ---------- v1.10: admin panel ---------- */
+.adm-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.adm-kpi { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 6px; border-radius: 16px; text-align: center; background: var(--bg-elev); box-shadow: var(--shadow); }
+.adm-kpi b { font-size: 1.7rem; line-height: 1.05; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.adm-kpis:not(.small) .adm-kpi:first-child { color: #fff; background: radial-gradient(130% 150% at 0% 0%, var(--accent-2) 0%, var(--accent) 60%, #B8322A 100%); }
+.adm-kpi span { margin-top: 3px; font-size: .72rem; font-weight: 600; color: var(--text-2); line-height: 1.2; }
+.adm-kpis:not(.small) .adm-kpi:first-child span { color: rgba(255,255,255,.9); }
+.adm-kpis.small .adm-kpi b { font-size: 1.3rem; }
+.adm-chart { display: flex; align-items: flex-end; gap: 3px; height: 84px; }
+.adm-bar { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.adm-bar i { display: block; width: 100%; border-radius: 4px 4px 1px 1px; background: var(--fill-strong); }
+.adm-bar i.on { background: linear-gradient(180deg, var(--accent-2), var(--accent)); }
+.adm-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: .72rem; color: var(--text-3); }
+.adm-totals { margin: 12px 4px 0; font-size: .85rem; color: var(--text-2); }
+.adm-providers { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-users { display: grid; gap: 8px; margin-top: 12px; }
+.adm-user { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--bg-elev); box-shadow: var(--shadow); }
+.adm-user .avatar { width: 42px; height: 42px; font-size: 17px; box-shadow: none; flex: none; }
+.adm-user-main { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.adm-user-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-user-main small { color: var(--text-2); font-size: .76rem; }
+.adm-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text) !important; opacity: .75; }
+.adm-nums { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: .8rem; font-weight: 700; color: var(--text-2); }
+@media (max-width: 380px) { .adm-kpis { grid-template-columns: repeat(2, 1fr); } }

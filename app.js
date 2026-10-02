@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,14 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    admin_section: 'Администратор', admin_users: 'Потребители', admin_users_sub: 'Кой се е регистрирал', admin_total: 'Регистрирани', admin_today: 'Днес', admin_7d: '7 дни', admin_30d: '30 дни',
+    admin_chart: 'Регистрации — последните 30 дни', admin_activity: 'Активност', admin_active7: 'Влизали (7 дни)', admin_with_recipes: 'Със свои рецепти', admin_cooking: 'Готвили',
+    admin_unconfirmed: 'Непотвърден имейл', admin_providers: 'Начин на вход', admin_list: 'Всички потребители', admin_search: 'Търси по име или имейл…',
+    admin_joined: 'регистриран', admin_last: 'последен вход', admin_never: 'не е влизал', admin_just_now: 'току-що', admin_min_ago: n => `преди ${n} мин`, admin_h_ago: n => `преди ${n} ч`, admin_d_ago: n => `преди ${n} дни`,
+    admin_recipes: 'рецепти', admin_msgs: 'съобщения', admin_ratings: 'оценки', admin_friends: 'приятелства', admin_recipes_short: 'Добавени рецепти', admin_cooked_short: 'Пъти сготвено',
+    admin_refresh: 'Обнови', admin_refreshed: 'Обновено', admin_export: 'Свали списъка (CSV)', admin_err_title: 'Няма достъп до данните',
+    admin_err: 'Или не си администратор, или базата още не е обновена (пусни supabase/schema.sql и make-admin.sql).',
+    admin_privacy_note: 'Имейлите се виждат само от теб като администратор и никога от другите потребители.',
     tab_chat: 'Чат', chat_title: 'Съобщения', chat_sub: 'Чат с приятели', chat_new: 'Ново', chat_empty: 'Още няма разговори',
     chat_empty_sub: 'Добави приятели и им пиши — можеш да тагваш рецепти в съобщенията.', chat_you: 'Ти', chat_someone: 'Някой',
     chat_recipe_missing: 'Рецептата не е достъпна за теб', chat_recipe_default: 'Виж тази рецепта', chat_back: 'Назад', chat_tag: 'Тагни рецепта',
@@ -228,6 +236,14 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    admin_section: 'Admin', admin_users: 'Users', admin_users_sub: 'Who has registered', admin_total: 'Registered', admin_today: 'Today', admin_7d: '7 days', admin_30d: '30 days',
+    admin_chart: 'Registrations — last 30 days', admin_activity: 'Activity', admin_active7: 'Signed in (7 days)', admin_with_recipes: 'With own recipes', admin_cooking: 'Cooked',
+    admin_unconfirmed: 'Unconfirmed email', admin_providers: 'Sign-in method', admin_list: 'All users', admin_search: 'Search by name or email…',
+    admin_joined: 'joined', admin_last: 'last sign-in', admin_never: 'never signed in', admin_just_now: 'just now', admin_min_ago: n => `${n} min ago`, admin_h_ago: n => `${n} h ago`, admin_d_ago: n => `${n} days ago`,
+    admin_recipes: 'recipes', admin_msgs: 'messages', admin_ratings: 'ratings', admin_friends: 'friendships', admin_recipes_short: 'Recipes added', admin_cooked_short: 'Times cooked',
+    admin_refresh: 'Refresh', admin_refreshed: 'Refreshed', admin_export: 'Download list (CSV)', admin_err_title: 'No access to the data',
+    admin_err: 'Either you are not an admin or the database is not updated yet (run supabase/schema.sql and make-admin.sql).',
+    admin_privacy_note: 'Emails are visible only to you as the admin and never to other users.',
     tab_chat: 'Chat', chat_title: 'Messages', chat_sub: 'Chat with friends', chat_new: 'New', chat_empty: 'No conversations yet',
     chat_empty_sub: 'Add friends and write to them — you can tag recipes in your messages.', chat_you: 'You', chat_someone: 'Someone',
     chat_recipe_missing: 'This recipe is not available to you', chat_recipe_default: 'Look at this recipe', chat_back: 'Back', chat_tag: 'Tag a recipe',
@@ -928,6 +944,7 @@ function settingsView() {
       <button class="row row-btn" data-action="import"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬇︎</span>${esc(t('import'))}</span></button>
     </div>
     <p class="hint">${esc(t('storage_hint'))}</p>` : ''}
+    ${auth.mode === 'user' && isAdmin ? `<div class="group-label">🛡 ${esc(t('admin_section'))}</div><div class="group"><button class="row row-btn" data-action="admin-users"><span class="lbl"><span class="ic" style="background:#6C5CE7">👥</span>${esc(t('admin_users'))}</span><span class="val">${esc(t('admin_users_sub'))}</span></button></div>` : ''}
     ${hiddenCount ? `<div class="group-label">${esc(t('hidden_title'))}</div><div class="group"><button class="row row-btn" data-action="restore-hidden"><span class="lbl"><span class="ic" style="background:#2FA36B">↺</span>${esc(t('restore_hidden'))} (${hiddenCount})</span></button></div>` : ''}
     ${auth.mode === 'user' ? `<div class="group-label">${esc(t('account'))}</div>
     <div class="group">
@@ -1759,6 +1776,7 @@ function bindEvents() {
       case 'new-recipe': if (canWrite()) askAddMode(); else promptLogin(); break;
       case 'login': openAuth({ view: 'signin' }); break;
       case 'friends': openPeoplePage(null); break;
+      case 'admin-users': openAdminUsers(); break;
       case 'restore-hidden': await restoreHidden(); break;
       case 'send-user': if (r) openSharePage(r); break;
       case 'save-name': {

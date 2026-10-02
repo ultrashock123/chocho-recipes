@@ -184,6 +184,17 @@ const cloud = {
     const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id }, { ignoreDuplicates: true });
     if (error) throw error;
   },
+  // Admin panel (the database refuses everybody who is not in app_admins).
+  async adminUsers() {
+    const { data, error } = await sb.rpc('admin_user_stats');
+    if (error) throw error;
+    return data || [];
+  },
+  async adminTotals() {
+    const { data, error } = await sb.rpc('admin_totals');
+    if (error) throw error;
+    return (data && data[0]) || null;
+  },
   // Chat (1-to-1 messages, optionally tagging a recipe).
   async loadMessages() {
     const me = auth.user.id;
