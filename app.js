@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -109,6 +109,7 @@ const I18N = {
     pill_public: '🌍 Публична', pill_private: '🔒 Лична', made_public: 'Рецептата е публична', made_private: 'Рецептата е лична',
     make_public: 'Направи публична', make_private: 'Направи лична', by_author: n => `от ${n}`,
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
+    display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     scope_mine: 'Мои рецепти', scope_shared: 'Споделени с мен', mine_sub: 'Всичко, което си добавил', shared_sub: 'Изпратени от други',
     share_menu: 'Изпрати на потребител', share_title: 'Изпрати рецепта', share_search_ph: 'Търси потребител по име…',
     share_hint: 'Получателят ще вижда рецептата (дори да е лична), но не може да я променя. Намират се само потребители, които са разрешили името им да се вижда.',
@@ -192,6 +193,7 @@ const I18N = {
     pill_public: '🌍 Public', pill_private: '🔒 Private', made_public: 'Recipe is now public', made_private: 'Recipe is now private',
     make_public: 'Make public', make_private: 'Make private', by_author: n => `by ${n}`,
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
+    display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     scope_mine: 'My recipes', scope_shared: 'Shared with me', mine_sub: 'Everything you added', shared_sub: 'Sent by others',
     share_menu: 'Send to a user', share_title: 'Send recipe', share_search_ph: 'Search user by name…',
     share_hint: 'The recipient can see the recipe (even if private) but cannot change it. Only users who allow their name to be shown can be found.',
@@ -739,11 +741,18 @@ function settingsView() {
     </div>` : `<div class="profile-card">
       <button data-action="avatar">${avatarHTML()}</button>
       <div style="flex:1;min-width:0">
-        <input id="profile-name" value="${esc(myName())}" placeholder="${esc(t('your_name'))}" maxlength="40">
+        ${auth.mode === 'user' ? `<div class="profile-name-text">${esc(myName() || t('your_name'))}</div>`
+          : `<input id="profile-name" value="${esc(myName())}" placeholder="${esc(t('your_name'))}" maxlength="40">`}
         <small>${esc(auth.mode === 'user' ? auth.user.email || '' : t('personal'))}</small>
       </div>
     </div>`}
-    ${auth.mode === 'user' ? `<div class="group" style="margin-top:12px"><label class="row"><span class="lbl">👤 ${esc(t('show_author'))}</span><span class="switch"><input type="checkbox" id="show-author" ${showsAuthor() ? 'checked' : ''}><span></span></span></label></div>
+    ${auth.mode === 'user' ? `<div class="group-label">${esc(t('display_name_label'))}</div>
+    <div class="group"><div class="name-edit">
+      <input class="field" id="display-name" value="${esc(myName())}" placeholder="${esc(t('your_name'))}" maxlength="40" autocomplete="name">
+      <button class="btn primary" data-action="save-name">${esc(t('save'))}</button>
+    </div></div>
+    <p class="hint">${esc(t('display_name_hint'))}</p>
+    <div class="group" style="margin-top:12px"><label class="row"><span class="lbl">👤 ${esc(t('show_author'))}</span><span class="switch"><input type="checkbox" id="show-author" ${showsAuthor() ? 'checked' : ''}><span></span></span></label></div>
     <p class="hint">${esc(t('show_author_hint'))}</p>` : ''}
     <div class="stats">
       <div class="stat"><b>${n}</b><span>${esc(t('st_recipes'))}</span></div>
@@ -1552,6 +1561,13 @@ function bindEvents() {
     switch (act) {
       case 'new-recipe': if (canWrite()) askAddMode(); else promptLogin(); break;
       case 'login': openAuth({ view: 'signin' }); break;
+      case 'save-name': {
+        const name = ($('#display-name').value || '').trim();
+        if (!name) { toast(t('need_title')); break; }
+        await saveProfile({ display_name: name });
+        await loadUserData(); renderTab(); toast(t('name_saved'));
+        break;
+      }
       case 'logout': {
         const ok = await actionSheet(t('logout_q'), [{ label: t('logout'), danger: true, value: true }]);
         if (ok) { await signOut(); toast(t('logged_out')); }
@@ -1690,6 +1706,7 @@ function bindEvents() {
   });
   document.addEventListener('keydown', e => {
     if (e.target.id === 'q' && e.key === 'Enter') e.target.blur();
+    if (e.target.id === 'display-name' && e.key === 'Enter') $('[data-action="save-name"]').click();
     if (e.key === 'Escape' && !$('#sheet-root').firstChild && !$('#auth-root').firstChild) popPage();
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAppearance);
