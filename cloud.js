@@ -46,9 +46,10 @@ async function applySession(session) {
     id: user.id,
     display_name: meta.display_name || meta.full_name || meta.name || (user.email || '').split('@')[0],
     avatar_url: meta.avatar_url || meta.picture || null,
+    show_author: true,
   };
   try {
-    const { data } = await sb.from('profiles').select('id,display_name,avatar_url').eq('id', user.id).maybeSingle();
+    const { data } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (data) auth.profile = data;
     else { await sb.from('profiles').upsert(fallback); auth.profile = fallback; }
   } catch (e) { auth.profile = fallback; }
@@ -57,8 +58,14 @@ async function applySession(session) {
 async function saveProfile(patch) {
   if (auth.mode !== 'user') return;
   auth.profile = Object.assign({}, auth.profile, patch);
-  try { await sb.from('profiles').upsert(Object.assign({ id: auth.user.id }, auth.profile)); } catch (e) {}
+  const row = { id: auth.user.id, display_name: auth.profile.display_name, avatar_url: auth.profile.avatar_url || null };
+  if ('show_author' in patch) row.show_author = !!patch.show_author; // column exists after the sharing update of schema.sql
+  try {
+    const { error } = await sb.from('profiles').upsert(row);
+    if (error) throw error;
+  } catch (e) { toast(t('save_err')); }
 }
+const showsAuthor = () => !auth.profile || auth.profile.show_author !== false;
 
 const signInOAuth = provider => sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.origin + location.pathname } });
 const signInEmail = (email, password) => sb.auth.signInWithPassword({ email, password });
@@ -88,8 +95,14 @@ const cloud = {
       const { data: ps } = await sb.from('profiles').select('id,display_name').in('id', ids);
       (ps || []).forEach(p => { names[p.id] = p.display_name; });
     }
+    const incoming = new Set();
+    if (auth.mode === 'user') {
+      const { data: sh } = await sb.from('recipe_shares').select('recipe_id').eq('shared_with', auth.user.id);
+      (sh || []).forEach(s => incoming.add(s.recipe_id));
+    }
     return data.map(row => Object.assign({}, row.data, {
       id: row.id, owner: row.owner_id, ownerName: names[row.owner_id] || '', visibility: row.visibility,
+      sharedWithMe: incoming.has(row.id) && row.owner_id !== (auth.user && auth.user.id),
       basedOn: row.based_on || null, createdAt: Date.parse(row.created_at), updatedAt: Date.parse(row.updated_at), seed: false,
     }));
   },
@@ -107,6 +120,32 @@ const cloud = {
     if (error) throw error;
     const paths = (r.images || []).map(photoPath).filter(p => p && p.startsWith(auth.user.id + '/'));
     if (paths.length) { try { await sb.storage.from(BUCKET).remove(paths); } catch (e) {} }
+  },
+  // People who allow to be found (Settings → "Show my name"). Matches by display name only; emails are never exposed.
+  async searchUsers(q) {
+    const term = q.replace(/[%_,()]/g, ' ').trim();
+    if (term.length < 2) return [];
+    const { data, error } = await sb.from('profiles').select('id,display_name,avatar_url')
+      .ilike('display_name', `%${term}%`).neq('id', auth.user.id).limit(20);
+    if (error) throw error;
+    return data || [];
+  },
+  async listShares(recipeId) {
+    const { data, error } = await sb.from('recipe_shares').select('shared_with').eq('recipe_id', recipeId);
+    if (error) throw error;
+    const ids = (data || []).map(s => s.shared_with);
+    if (!ids.length) return [];
+    const { data: ps } = await sb.from('profiles').select('id,display_name,avatar_url').in('id', ids);
+    const byId = Object.fromEntries((ps || []).map(p => [p.id, p]));
+    return ids.map(id => byId[id] || { id, display_name: '…', avatar_url: null });
+  },
+  async share(recipeId, userId) {
+    const { error } = await sb.from('recipe_shares').upsert({ recipe_id: recipeId, owner_id: auth.user.id, shared_with: userId });
+    if (error) throw error;
+  },
+  async unshare(recipeId, userId) {
+    const { error } = await sb.from('recipe_shares').delete().eq('recipe_id', recipeId).eq('shared_with', userId);
+    if (error) throw error;
   },
   async loadStates() {
     const { data, error } = await sb.from('recipe_states').select('recipe_id,favorite,tried').eq('user_id', auth.user.id);

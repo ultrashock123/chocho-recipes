@@ -1,7 +1,8 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
+const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
 
@@ -108,7 +109,13 @@ const I18N = {
     pill_public: '🌍 Публична', pill_private: '🔒 Лична', made_public: 'Рецептата е публична', made_private: 'Рецептата е лична',
     make_public: 'Направи публична', make_private: 'Направи лична', by_author: n => `от ${n}`,
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
-    scope_mine: 'Мои', save_err: 'Не успях да запазя — провери връзката', load_offline: 'Няма връзка — показвам запазените рецепти',
+    scope_mine: 'Мои рецепти', scope_shared: 'Споделени с мен', mine_sub: 'Всичко, което си добавил', shared_sub: 'Изпратени от други',
+    share_menu: 'Изпрати на потребител', share_title: 'Изпрати рецепта', share_search_ph: 'Търси потребител по име…',
+    share_hint: 'Получателят ще вижда рецептата (дори да е лична), но не може да я променя. Намират се само потребители, които са разрешили името им да се вижда.',
+    share_min: 'Въведи поне 2 букви', share_none: 'Не намерих такъв потребител', share_with: 'Изпратена на', share_nobody: 'Още не е изпращана на никого',
+    share_done: n => `Изпратено на ${n}`, share_removed: 'Достъпът е премахнат', share_send: 'Изпрати', share_remove: 'Премахни', close: 'Затвори',
+    shared_pill: 'Споделена с теб', show_author: 'Показвай името ми', show_author_hint: 'Ако е включено, името ти се вижда като автор на публичните ти рецепти и другите могат да те намерят, за да ти изпращат рецепти.',
+    save_err: 'Не успях да запазя — провери връзката', load_offline: 'Няма връзка — показвам запазените рецепти',
     local_found: n => `Намерени ${n} рецепти само на този телефон`, upload_local: 'Качи рецептите от този телефон в акаунта',
     upload_local_q: 'Как да ги качим?', upload_done: n => `Качени ${n} рецепти`, upload_busy: 'Качвам…', cloud_hint: 'Рецептите и снимките ти се пазят в акаунта и са достъпни от всяко устройство.',
   },
@@ -185,7 +192,13 @@ const I18N = {
     pill_public: '🌍 Public', pill_private: '🔒 Private', made_public: 'Recipe is now public', made_private: 'Recipe is now private',
     make_public: 'Make public', make_private: 'Make private', by_author: n => `by ${n}`,
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
-    scope_mine: 'Mine', save_err: 'Could not save — check your connection', load_offline: 'Offline — showing saved recipes',
+    scope_mine: 'My recipes', scope_shared: 'Shared with me', mine_sub: 'Everything you added', shared_sub: 'Sent by others',
+    share_menu: 'Send to a user', share_title: 'Send recipe', share_search_ph: 'Search user by name…',
+    share_hint: 'The recipient can see the recipe (even if private) but cannot change it. Only users who allow their name to be shown can be found.',
+    share_min: 'Type at least 2 letters', share_none: 'No such user found', share_with: 'Sent to', share_nobody: 'Not sent to anyone yet',
+    share_done: n => `Sent to ${n}`, share_removed: 'Access removed', share_send: 'Send', share_remove: 'Remove', close: 'Close',
+    shared_pill: 'Shared with you', show_author: 'Show my name', show_author_hint: 'When on, your name is shown as the author of your public recipes and others can find you to send you recipes.',
+    save_err: 'Could not save — check your connection', load_offline: 'Offline — showing saved recipes',
     local_found: n => `Found ${n} recipes only on this phone`, upload_local: 'Upload recipes from this phone to your account',
     upload_local_q: 'How should we upload them?', upload_done: n => `Uploaded ${n} recipes`, upload_busy: 'Uploading…', cloud_hint: 'Your recipes and photos are stored in your account and available on any device.',
   },
@@ -397,7 +410,7 @@ const state = {
   query: '',
   cat: null,
   coll: null,
-  scope: 'all', // 'all' | 'mine'
+  scope: 'all', // 'all' | 'mine' | 'shared'
   pages: [],
 };
 const byId = id => state.recipes.find(r => r.id === id);
@@ -469,7 +482,7 @@ function normalizeSeed(r, created) {
     source: r.source || null, seedTried: r.tried === true, ingredients: r.ingredients || [], steps: r.steps || '',
     notes: r.notes || '', links: r.links || [], images: r.images || [], favorite: false, tried: r.tried === true,
     time: r.time || '', servings: r.servings || '', createdAt: created, updatedAt: created, seed: true,
-    owner: null, visibility: 'public',
+    owner: null, ownerName: SITE_AUTHOR, visibility: 'public',
   };
 }
 // v1.2 kept everything (originals, favorites, edits) in one IndexedDB store. Split it: favorites/tried become
@@ -560,6 +573,7 @@ function card(r) {
     <div class="card-body">
       <div class="card-title">${esc(r.title)}</div>
       <div class="card-meta">${c.emoji} ${esc(catName(c.id))} · ${esc(collName(r.collection))}</div>
+      ${!r.seed && r.ownerName && !isMine(r) ? `<div class="card-author">👤 ${esc(r.ownerName)}</div>` : ''}
     </div>
   </button>`;
 }
@@ -600,6 +614,7 @@ function renderTab() {
 function filtered() {
   let list = state.recipes;
   if (state.scope === 'mine') list = list.filter(isMine);
+  else if (state.scope === 'shared') list = list.filter(r => r.sharedWithMe);
   if (state.cat) list = list.filter(r => (r.categories || []).includes(state.cat));
   if (state.coll) list = list.filter(r => r.collection === state.coll);
   const q = state.query.trim();
@@ -616,9 +631,10 @@ function homeView() {
   state.recipes.forEach(r => (r.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
   const collCounts = {};
   state.recipes.forEach(r => { collCounts[r.collection] = (collCounts[r.collection] || 0) + 1; });
-  const filtering = state.query.trim() || state.cat || state.coll || state.scope === 'mine';
+  const filtering = state.query.trim() || state.cat || state.coll || state.scope !== 'all';
   const list = filtered();
   const mineCount = state.recipes.filter(isMine).length;
+  const sharedCount = state.recipes.filter(r => r.sharedWithMe).length;
 
   let body = '';
   if (!filtering) {
@@ -658,6 +674,7 @@ function homeView() {
     <div class="chips seg">
       <button class="chip small ${!state.coll && state.scope === 'all' ? 'active' : ''}" data-coll="">${esc(t('all'))}</button>
       ${auth.mode !== 'guest' ? `<button class="chip small ${state.scope === 'mine' ? 'active' : ''}" data-scope="mine">👤 ${esc(t('scope_mine'))} <span class="count">${mineCount}</span></button>` : ''}
+      ${sharedCount ? `<button class="chip small ${state.scope === 'shared' ? 'active' : ''}" data-scope="shared">📥 ${esc(t('scope_shared'))} <span class="count">${sharedCount}</span></button>` : ''}
       ${COLLECTIONS.filter(c => collCounts[c.id]).map(c => `<button class="chip small ${state.coll === c.id ? 'active' : ''}" data-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${collCounts[c.id]}</span></button>`).join('')}
     </div>
     <div class="chips">
@@ -688,6 +705,10 @@ function categoriesView() {
     </div>
     <div class="section-head"><h2>${esc(t('collections'))}</h2></div>
     <div class="tiles">
+      ${auth.mode !== 'guest' ? `<button class="tile tile-mine" style="--h:14" data-go-scope="mine">
+        <b>${esc(t('scope_mine'))}</b><span>${esc(t('recipes_n', state.recipes.filter(isMine).length))}</span><div class="emo">👤</div></button>` : ''}
+      ${state.recipes.some(r => r.sharedWithMe) ? `<button class="tile" style="--h:210" data-go-scope="shared">
+        <b>${esc(t('scope_shared'))}</b><span>${esc(t('recipes_n', state.recipes.filter(r => r.sharedWithMe).length))}</span><div class="emo">📥</div></button>` : ''}
       ${COLLECTIONS.filter(c => collCounts[c.id]).map((c, i) => `<button class="tile" style="--h:${[20, 280, 38, 160][i]}" data-go-coll="${c.id}">
         <b>${esc(c[settings.lang])}</b><span>${esc(t('recipes_n', collCounts[c.id]))}</span><div class="emo">${c.emoji}</div></button>`).join('')}
     </div>
@@ -722,6 +743,8 @@ function settingsView() {
         <small>${esc(auth.mode === 'user' ? auth.user.email || '' : t('personal'))}</small>
       </div>
     </div>`}
+    ${auth.mode === 'user' ? `<div class="group" style="margin-top:12px"><label class="row"><span class="lbl">👤 ${esc(t('show_author'))}</span><span class="switch"><input type="checkbox" id="show-author" ${showsAuthor() ? 'checked' : ''}><span></span></span></label></div>
+    <p class="hint">${esc(t('show_author_hint'))}</p>` : ''}
     <div class="stats">
       <div class="stat"><b>${n}</b><span>${esc(t('st_recipes'))}</span></div>
       <div class="stat"><b>${f}</b><span>${esc(t('st_fav'))}</span></div>
@@ -863,7 +886,9 @@ function detailHTML(r, tabSel = 'ing') {
         ${r.tried ? `<span class="pill ok">✓ ${esc(t('tried'))}</span>` : ''}
         ${r.source ? `<span class="pill">✍️ ${esc(r.source)}</span>` : ''}
         ${!r.seed && auth.mode !== 'local' ? `<span class="pill ${r.visibility === 'private' ? 'warn' : ''}">${esc(t(r.visibility === 'private' ? 'pill_private' : 'pill_public'))}</span>` : ''}
-        ${!r.seed && r.ownerName && !isMine(r) ? `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>` : ''}
+        ${r.sharedWithMe ? `<span class="pill accent">📥 ${esc(t('shared_pill'))}</span>` : ''}
+        ${r.ownerName && !isMine(r) ? `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>` : ''}
+        ${isMine(r) && !r.seed && auth.mode === 'user' && showsAuthor() && myName() ? `<span class="pill">👤 ${esc(t('by_author', myName()))}</span>` : ''}
         ${meta}${cats}
       </div>
       <div class="quick-actions">
@@ -1496,9 +1521,11 @@ function bindEvents() {
     const scopeBtn = e.target.closest('[data-scope]');
     if (scopeBtn) { state.scope = state.scope === scopeBtn.dataset.scope ? 'all' : scopeBtn.dataset.scope; renderTab(); return; }
     const goCat = e.target.closest('[data-go-cat]');
-    if (goCat) { state.cat = goCat.dataset.goCat; state.coll = null; state.query = ''; state.tab = 'home'; renderTab(); window.scrollTo(0, 0); return; }
+    if (goCat) { state.cat = goCat.dataset.goCat; state.coll = null; state.scope = 'all'; state.query = ''; state.tab = 'home'; renderTab(); window.scrollTo(0, 0); return; }
+    const goScope = e.target.closest('[data-go-scope]');
+    if (goScope) { state.scope = goScope.dataset.goScope; state.cat = null; state.coll = null; state.query = ''; state.tab = 'home'; renderTab(); window.scrollTo(0, 0); return; }
     const goColl = e.target.closest('[data-go-coll]');
-    if (goColl) { state.coll = goColl.dataset.goColl; state.cat = null; state.query = ''; state.tab = 'home'; renderTab(); window.scrollTo(0, 0); return; }
+    if (goColl) { state.coll = goColl.dataset.goColl; state.cat = null; state.scope = 'all'; state.query = ''; state.tab = 'home'; renderTab(); window.scrollTo(0, 0); return; }
 
     const setBtn = e.target.closest('[data-set]');
     if (setBtn) {
@@ -1584,11 +1611,15 @@ function bindEvents() {
         const opts = mine ? [{ label: '✏️ ' + t('edit'), value: 'edit' }] : r.seed
           ? [{ label: '✏️ ' + t('edit_mine'), value: 'fork' }]
           : [{ label: '📋 ' + t('copy_mine'), value: 'copy' }];
-        if (mine && auth.mode === 'user') opts.push(r.visibility === 'private'
-          ? { label: t('make_public'), value: 'public' } : { label: t('make_private'), value: 'private' });
+        if (mine && auth.mode === 'user') {
+          opts.push({ label: '📤 ' + t('share_menu'), value: 'share' });
+          opts.push(r.visibility === 'private'
+            ? { label: t('make_public'), value: 'public' } : { label: t('make_private'), value: 'private' });
+        }
         if (mine) opts.push({ label: '🗑 ' + t('delete'), value: 'delete', danger: true });
         const v = await actionSheet(r.title, opts);
         if (v === 'edit') openEditor(r);
+        if (v === 'share') openSharePage(r);
         if (v === 'fork' || v === 'copy') {
           openEditor(null, Object.assign(JSON.parse(JSON.stringify(Object.fromEntries(RECIPE_FIELDS.map(k => [k, r[k]])))),
             { basedOn: v === 'fork' ? r.id : null, tried: r.tried, source: null }));
@@ -1648,6 +1679,7 @@ function bindEvents() {
     if (e.target.id === 'scale') {
       settings.scale = SCALES[Number(e.target.value)]; saveSettings(); applyAppearance();
     }
+    if (e.target.id === 'show-author') saveProfile({ show_author: e.target.checked });
     if (e.target.id === 'profile-name') {
       if (auth.mode === 'user') {
         clearTimeout(bindEvents._n);
@@ -1661,6 +1693,64 @@ function bindEvents() {
     if (e.key === 'Escape' && !$('#sheet-root').firstChild && !$('#auth-root').firstChild) popPage();
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyAppearance);
+}
+
+/* ---------------- Send a recipe to another user ---------------- */
+const personRow = (p, action, label, cls = '') => `<div class="person" data-uid="${esc(p.id)}">
+  <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
+  <b>${esc(p.display_name || '')}</b>
+  <button class="btn ${cls}" style="width:auto;height:36px;padding:0 14px" data-person="${action}">${esc(label)}</button></div>`;
+
+function openSharePage(r) {
+  let timer = null, shared = [];
+  const el = pushPage(`<div class="navbar">
+      <button class="nav-btn" data-action="back">${esc(t('close'))}</button>
+      <h1>📤 ${esc(t('share_title'))}</h1><span style="width:60px"></span>
+    </div>
+    <div class="form">
+      <p class="muted" style="margin:10px 4px 4px"><b>${esc(r.title)}</b></p>
+      <p class="hint" style="margin:0 4px 12px">${esc(t('share_hint'))}</p>
+      <div class="group"><label class="search-field" style="border-radius:0;background:transparent">${I.search}
+        <input id="share-q" type="search" autocomplete="off" placeholder="${esc(t('share_search_ph'))}"></label></div>
+      <div id="share-results" class="people"></div>
+      <div class="group-label">${esc(t('share_with'))}</div>
+      <div id="share-list" class="people"></div>
+    </div>`, { modal: true });
+  const results = $('#share-results', el), list = $('#share-list', el);
+  const draw = () => {
+    list.innerHTML = shared.length ? shared.map(p => personRow(p, 'remove', t('share_remove'), 'danger')).join('')
+      : `<p class="hint">${esc(t('share_nobody'))}</p>`;
+    hydratePhotos(list);
+  };
+  cloud.listShares(r.id).then(s => { shared = s; draw(); }).catch(() => { draw(); toast(t('save_err')); });
+  const search = async () => {
+    const q = $('#share-q', el).value;
+    if (q.trim().length < 2) { results.innerHTML = q.trim() ? `<p class="hint">${esc(t('share_min'))}</p>` : ''; return; }
+    try {
+      const found = (await cloud.searchUsers(q)).filter(p => !shared.some(s => s.id === p.id));
+      results.innerHTML = found.length ? found.map(p => personRow(p, 'add', t('share_send'), 'primary')).join('')
+        : `<p class="hint">${esc(t('share_none'))}</p>`;
+      hydratePhotos(results);
+      results._found = found;
+    } catch (e) { toast(t('save_err')); }
+  };
+  el.addEventListener('input', e => { if (e.target.id === 'share-q') { clearTimeout(timer); timer = setTimeout(search, 250); } });
+  el.addEventListener('click', async e => {
+    const b = e.target.closest('[data-person]');
+    if (!b) return;
+    const id = b.closest('.person').dataset.uid;
+    try {
+      if (b.dataset.person === 'add') {
+        const p = (results._found || []).find(x => x.id === id);
+        await cloud.share(r.id, id);
+        shared.push(p); draw(); search(); toast(t('share_done', p.display_name));
+      } else {
+        await cloud.unshare(r.id, id);
+        shared = shared.filter(x => x.id !== id); draw(); toast(t('share_removed'));
+      }
+    } catch (err) { toast(t('save_err')); }
+  });
+  setTimeout(() => $('#share-q', el).focus(), 350);
 }
 
 /* ---------------- Login prompt ---------------- */
