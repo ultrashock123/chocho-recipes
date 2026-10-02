@@ -184,6 +184,25 @@ const cloud = {
     const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id });
     if (error) throw error;
   },
+  // Ratings: public totals (view) + my own votes.
+  async ratingStats() {
+    const { data, error } = await sb.from('rating_stats').select('target_type,target_id,avg_stars,votes');
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.target_type + ':' + r.target_id, { avg: +r.avg_stars, count: +r.votes }]));
+  },
+  async myRatings() {
+    const { data, error } = await sb.from('ratings').select('target_type,target_id,stars').eq('rater_id', auth.user.id);
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.target_type + ':' + r.target_id, r.stars]));
+  },
+  async rate(type, id, stars) {
+    const { error } = await sb.from('ratings').upsert({ rater_id: auth.user.id, target_type: type, target_id: id, stars, updated_at: new Date().toISOString() });
+    if (error) throw error;
+  },
+  async unrate(type, id) {
+    const { error } = await sb.from('ratings').delete().eq('rater_id', auth.user.id).eq('target_type', type).eq('target_id', id);
+    if (error) throw error;
+  },
   async loadStates() {
     let res = await sb.from('recipe_states').select('recipe_id,favorite,tried,cooked,last_cooked,hidden').eq('user_id', auth.user.id);
     // Before the v1.5 database update the extra columns do not exist: fall back to the basic ones.

@@ -211,3 +211,48 @@ create policy "removed: admin writes" on public.removed_recipes
 drop policy if exists "removed: admin deletes" on public.removed_recipes;
 create policy "removed: admin deletes" on public.removed_recipes
   for delete to authenticated using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));
+
+-- ═════════ v1.6: оценки (1–5 звезди) за рецепти и потребители ═════════
+-- Един глас на човек за всяка рецепта и за всеки потребител (може да се променя или да се оттегли).
+-- Не можеш да оценяваш собствена рецепта или себе си.
+create table if not exists public.ratings (
+  rater_id    uuid not null references auth.users(id) on delete cascade,
+  target_type text not null check (target_type in ('recipe', 'user')),
+  target_id   text not null,                    -- id на рецептата или на потребителя
+  stars       smallint not null check (stars between 1 and 5),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  primary key (rater_id, target_type, target_id)
+);
+create index if not exists ratings_target_idx on public.ratings (target_type, target_id);
+alter table public.ratings enable row level security;
+
+-- Кой как е гласувал не се вижда от другите: всеки чете само своите гласове.
+drop policy if exists "ratings: read own" on public.ratings;
+create policy "ratings: read own" on public.ratings
+  for select to authenticated using (rater_id = auth.uid());
+drop policy if exists "ratings: insert own" on public.ratings;
+create policy "ratings: insert own" on public.ratings
+  for insert to authenticated with check (
+    rater_id = auth.uid()
+    and ((target_type = 'user' and target_id <> auth.uid()::text)
+      or (target_type = 'recipe' and not exists (select 1 from public.recipes r where r.id = target_id and r.owner_id = auth.uid())))
+  );
+drop policy if exists "ratings: update own" on public.ratings;
+create policy "ratings: update own" on public.ratings
+  for update to authenticated using (rater_id = auth.uid()) with check (
+    rater_id = auth.uid()
+    and ((target_type = 'user' and target_id <> auth.uid()::text)
+      or (target_type = 'recipe' and not exists (select 1 from public.recipes r where r.id = target_id and r.owner_id = auth.uid())))
+  );
+drop policy if exists "ratings: delete own" on public.ratings;
+create policy "ratings: delete own" on public.ratings
+  for delete to authenticated using (rater_id = auth.uid());
+grant select, insert, update, delete on public.ratings to authenticated;
+
+-- Общата оценка (средно и брой гласове) е публична, без да показва кой е гласувал.
+create or replace view public.rating_stats as
+  select target_type, target_id, round(avg(stars)::numeric, 2) as avg_stars, count(*) as votes
+  from public.ratings
+  group by target_type, target_id;
+grant select on public.rating_stats to anon, authenticated;

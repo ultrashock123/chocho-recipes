@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,10 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    rating_none: 'Още няма оценки', rating_votes: n => `${n} ${n === 1 ? 'оценка' : 'оценки'}`, your_rating: 'Твоята оценка',
+    rate_own: 'Не можеш да оценяваш своя рецепта', rate_self: 'Не можеш да оценяваш себе си', rate_thanks: 'Благодарим за оценката ★', rate_removed: 'Оценката е премахната',
+    score_exc: 'Изключително', score_top: 'Отлично', score_vgood: 'Много добро', score_good: 'Добро', score_ok: 'Задоволително', score_bad: 'Слабо',
+    sort_rating: 'По оценка', user_title: 'Потребител', user_recipes: n => `${n} ${n === 1 ? 'публична рецепта' : 'публични рецепти'}`, my_rating_title: 'Оценка за теб от другите',
     cooked_btn: 'Сготвих я', cooked_n: n => `Сготвена ×${n}`, cooked_toast: n => `🍳 Сготвена ${n} ${n === 1 ? 'път' : 'пъти'}`,
     cooked_again: 'Сготвих я пак (+1)', cooked_minus: 'Намали с 1', cooked_reset: 'Не е пробвана (нулирай)',
     portions: 'Порции', serv_reset: n => `Върни на ${n}`, serv_hint: 'Количествата се преизчисляват',
@@ -210,6 +214,10 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    rating_none: 'No ratings yet', rating_votes: n => `${n} rating${n === 1 ? '' : 's'}`, your_rating: 'Your rating',
+    rate_own: 'You cannot rate your own recipe', rate_self: 'You cannot rate yourself', rate_thanks: 'Thanks for rating ★', rate_removed: 'Rating removed',
+    score_exc: 'Exceptional', score_top: 'Superb', score_vgood: 'Very good', score_good: 'Good', score_ok: 'Okay', score_bad: 'Poor',
+    sort_rating: 'By rating', user_title: 'User', user_recipes: n => `${n} public recipe${n === 1 ? '' : 's'}`, my_rating_title: 'Your rating from others',
     cooked_btn: 'I cooked it', cooked_n: n => `Cooked ×${n}`, cooked_toast: n => `🍳 Cooked ${n} time${n === 1 ? '' : 's'}`,
     cooked_again: 'Cooked again (+1)', cooked_minus: 'Decrease by 1', cooked_reset: 'Not tried (reset)',
     portions: 'Servings', serv_reset: n => `Back to ${n}`, serv_hint: 'Amounts are recalculated',
@@ -456,6 +464,8 @@ let friends = [];  // my quick list of people to send recipes to
 let removed = new Set(); // originals the admin removed for everybody
 let isAdmin = false;
 let hiddenCount = 0;
+let ratingStats = {}; // public totals: { 'recipe:id' | 'user:id': { avg, count } }
+let myRatings = {};   // my votes: { 'recipe:id' | 'user:id': 1..5 }
 
 const isMine = r => auth.mode === 'user' ? r.owner === auth.user.id : auth.mode === 'local' && !r.seed;
 const canWrite = () => auth.mode !== 'guest';
@@ -500,6 +510,15 @@ async function loadUserData() {
       friends = await cloud.listFriends().catch(() => []);
       isAdmin = await cloud.isAdmin().catch(() => false);
     } else { incoming = {}; friends = []; isAdmin = false; }
+  }
+  if (auth.mode === 'local') { ratingStats = {}; myRatings = {}; }
+  else {
+    try { ratingStats = await cloud.ratingStats(); await DB.put('kv', ratingStats, 'ratingStats'); }
+    catch (e) { ratingStats = (await DB.get('kv', 'ratingStats')) || {}; }
+    if (auth.mode === 'user') {
+      try { myRatings = await cloud.myRatings(); await DB.put('kv', myRatings, 'myRatings:' + key); }
+      catch (e) { myRatings = (await DB.get('kv', 'myRatings:' + key)) || {}; }
+    } else myRatings = {};
   }
   settingsView.localCount = auth.mode === 'user' ? (await localBackend.list()).length : 0;
   compose();
@@ -641,7 +660,7 @@ function card(r) {
     </div>
     <div class="card-body">
       <div class="card-title">${esc(r.title)}</div>
-      <div class="card-meta">${c.emoji} ${esc(catName(c.id))} · ${esc(collName(r.collection))}</div>
+      <div class="card-meta">${(statOf('recipe', r.id) || {}).count ? `<span class="mini-score">${fmtScore(statOf('recipe', r.id).avg)}</span>` : ''}${c.emoji} ${esc(catName(c.id))} · ${esc(collName(r.collection))}</div>
       ${!r.seed && r.ownerName && !isMine(r) ? `<div class="card-author">👤 ${esc(r.ownerName)}</div>` : ''}
     </div>
   </button>`;
@@ -650,6 +669,7 @@ function sorted(list) {
   const s = settings.sort;
   const a = [...list];
   if (s === 'new') a.sort((x, y) => y.createdAt - x.createdAt);
+  else if (s === 'rating') { const sc = r => (statOf('recipe', r.id) || { avg: 0 }).avg, cn = r => (statOf('recipe', r.id) || { count: 0 }).count; a.sort((x, y) => (sc(y) - sc(x)) || (cn(y) - cn(x)) || x.title.localeCompare(y.title, 'bg')); }
   else if (s === 'tried') a.sort((x, y) => (y.tried - x.tried) || x.title.localeCompare(y.title, 'bg'));
   else a.sort((x, y) => x.title.localeCompare(y.title, 'bg'));
   return a;
@@ -813,6 +833,7 @@ function settingsView() {
         <small>${esc(auth.mode === 'user' ? auth.user.email || '' : t('personal'))}</small>
       </div>
     </div>`}
+    ${auth.mode === 'user' ? `<div class="group-label">${esc(t('my_rating_title'))}</div><div class="rating-box">${scoreHTML('user', auth.user.id)}</div>` : ''}
     ${auth.mode === 'user' ? `<div class="group-label">${esc(t('display_name_label'))}</div>
     <div class="group"><div class="name-edit">
       <input class="field" id="display-name" value="${esc(myName())}" placeholder="${esc(t('your_name'))}" maxlength="40" autocomplete="name">
@@ -991,10 +1012,11 @@ function detailHTML(r, tabSel = 'ing', serv = null) {
         ${r.source ? `<span class="pill">✍️ ${esc(r.source)}</span>` : ''}
         ${!r.seed && auth.mode !== 'local' ? `<span class="pill ${r.visibility === 'private' ? 'warn' : ''}">${esc(t(r.visibility === 'private' ? 'pill_private' : 'pill_public'))}</span>` : ''}
         ${r.sharedWithMe ? `<span class="pill accent">📥 ${esc(r.sharedBy ? t('shared_by', r.sharedBy) : t('shared_pill'))}</span>` : ''}
-        ${r.ownerName && !isMine(r) ? `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>` : ''}
+        ${r.ownerName && !isMine(r) ? (r.owner && ratingsOn() ? `<button class="pill pill-btn" data-user="${esc(r.owner)}" data-user-name="${esc(r.ownerName)}">👤 ${esc(t('by_author', r.ownerName))} ›</button>` : `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>`) : ''}
         ${isMine(r) && !r.seed && auth.mode === 'user' && showsAuthor() && myName() ? `<span class="pill">👤 ${esc(t('by_author', myName()))}</span>` : ''}
         ${meta}${cats}
       </div>
+      ${ratingsOn() ? ratingBoxHTML('recipe', r.id) : ''}
       <div class="quick-actions">
         <button class="qa ${r.tried ? 'on' : ''}" data-action="cooked">${I.check}<span>${esc(cookLabel(r))}</span></button>
         <button class="qa" data-action="cook">${I.flame}<span>${esc(t('cook'))}</span></button>
@@ -1611,6 +1633,14 @@ function bindEvents() {
       refreshDetail(rr, next === base ? null : next);
       return;
     }
+    const rate = e.target.closest('.stars-input [data-stars]');
+    if (rate) {
+      const box = rate.closest('.stars-input');
+      if (await setRating(box.dataset.rateType, box.dataset.rateId, Number(rate.dataset.stars))) refreshAfterRating();
+      return;
+    }
+    const userBtn = e.target.closest('[data-user]');
+    if (userBtn) { openUserPage({ id: userBtn.dataset.user, name: userBtn.dataset.userName || '', avatar: null }); return; }
     const stepEl = e.target.closest('.step[data-step]');
     if (stepEl && !e.target.closest('a')) { stepEl.classList.toggle('done'); haptic(); return; }
     const favBtn = e.target.closest('[data-fav]');
@@ -1711,6 +1741,7 @@ function bindEvents() {
           { label: (settings.sort === 'az' ? '✓ ' : '') + t('sort_az'), value: 'az' },
           { label: (settings.sort === 'new' ? '✓ ' : '') + t('sort_new'), value: 'new' },
           { label: (settings.sort === 'tried' ? '✓ ' : '') + t('sort_tried'), value: 'tried' },
+          ...(ratingsOn() ? [{ label: (settings.sort === 'rating' ? '✓ ' : '') + t('sort_rating'), value: 'rating' }] : []),
         ]);
         if (v) { settings.sort = v; saveSettings(); renderTab(); }
         break;
@@ -2022,10 +2053,99 @@ function initTimer() {
   renderTimer();
 }
 
+/* ---------------- Ratings (1–5 stars, one vote per person; overall score like Booking) ---------------- */
+const rkey = (type, id) => type + ':' + id;
+const statOf = (type, id) => ratingStats[rkey(type, id)] || null;
+const score10 = avg => Math.round(avg * 20) / 10; // 4.3 stars -> 8.6 / 10
+const fmtScore = avg => score10(avg).toFixed(1).replace('.', ',');
+const scoreLabel = avg => { const s = score10(avg); return t(s >= 9 ? 'score_exc' : s >= 8 ? 'score_top' : s >= 7 ? 'score_vgood' : s >= 6 ? 'score_good' : s >= 5 ? 'score_ok' : 'score_bad'); };
+const ratingsOn = () => auth.mode !== 'local';
+function canRate(type, id) {
+  if (auth.mode !== 'user') return false;
+  if (type === 'user') return id !== auth.user.id;
+  const r = byId(id);
+  return !(r && isMine(r));
+}
+function scoreHTML(type, id) {
+  const st = statOf(type, id);
+  if (!st || !st.count) return `<div class="score none"><span class="score-text"><small>${esc(t('rating_none'))}</small></span></div>`;
+  return `<div class="score"><span class="score-badge">${fmtScore(st.avg)}</span>
+    <span class="score-text"><b>${esc(scoreLabel(st.avg))}</b><small>${esc(t('rating_votes', st.count))}</small></span></div>`;
+}
+function starsHTML(type, id) {
+  const mine = myRatings[rkey(type, id)] || 0;
+  return `<div class="stars-input" data-rate-type="${type}" data-rate-id="${esc(id)}" role="group" aria-label="${esc(t('your_rating'))}">
+    ${[1, 2, 3, 4, 5].map(n => `<button data-stars="${n}" class="${n <= mine ? 'on' : ''}" aria-label="${n}">★</button>`).join('')}</div>`;
+}
+function ratingBoxHTML(type, id) {
+  let vote;
+  if (auth.mode === 'guest') vote = `<div class="rate-row"><span>${esc(t('your_rating'))}</span>${starsHTML(type, id)}</div>`;
+  else if (canRate(type, id)) vote = `<div class="rate-row"><span>${esc(t('your_rating'))}</span>${starsHTML(type, id)}</div>`;
+  else vote = `<small class="muted">${esc(t(type === 'user' ? 'rate_self' : 'rate_own'))}</small>`;
+  return `<div class="rating-box">${scoreHTML(type, id)}${vote}</div>`;
+}
+// Saves my vote (tapping my own star again removes it) and keeps the totals in sync without a reload.
+async function setRating(type, id, stars) {
+  if (auth.mode === 'guest') { promptLogin(); return false; }
+  if (!canRate(type, id)) return false;
+  const k = rkey(type, id), prev = myRatings[k] || 0;
+  const st = ratingStats[k] || { avg: 0, count: 0 };
+  let sum = st.avg * st.count, count = st.count;
+  try {
+    if (prev === stars) {
+      await cloud.unrate(type, id); delete myRatings[k]; sum -= prev; count--; toast(t('rate_removed'));
+    } else {
+      await cloud.rate(type, id, stars); myRatings[k] = stars; sum += stars - prev; if (!prev) count++; toast(t('rate_thanks'));
+    }
+  } catch (e) { toast(t('save_err')); return false; }
+  if (count > 0) ratingStats[k] = { avg: sum / count, count }; else delete ratingStats[k];
+  try { await DB.put('kv', myRatings, 'myRatings:' + stateKey()); } catch (e) {}
+  return true;
+}
+function refreshAfterRating() {
+  const top = topPage();
+  if (top && top.el.querySelector('.detail')) refreshDetail(byId(top.el.querySelector('.detail').dataset.id));
+  else if (top && top.el.dataset.userId) renderUserBody(top.el);
+  renderTab();
+}
+
+/* ----- User profile page ----- */
+function userBodyHTML(u) {
+  const recipes = state.recipes.filter(r => r.owner === u.id && r.visibility !== 'private');
+  return `<div class="user-head">
+      <span class="avatar big">${u.avatar ? imgTag(u.avatar, '', false) : esc((u.name || '?').charAt(0).toUpperCase())}</span>
+      <h2>${esc(u.name || '')}</h2>
+    </div>
+    ${ratingBoxHTML('user', u.id)}
+    <div class="section-head"><h2>${esc(t('user_recipes', recipes.length))}</h2></div>
+    ${recipes.length ? `<div class="grid">${recipes.map(card).join('')}</div>` : ''}`;
+}
+function renderUserBody(el) {
+  const u = el._user;
+  $('.user-body', el).innerHTML = userBodyHTML(u);
+  hydratePhotos(el);
+}
+function openUserPage(u) {
+  const el = pushPage(`<div class="navbar">
+      <button class="nav-btn" data-action="back">${esc(t('close'))}</button>
+      <h1>${esc(t('user_title'))}</h1><span style="width:60px"></span>
+    </div><div class="form user-body"></div>`, { modal: true });
+  el.dataset.userId = u.id; el._user = u;
+  renderUserBody(el);
+  if (cloudOn() && sb && !u.avatar) {
+    cloud.profilesByIds([u.id]).then(m => {
+      const p = m[u.id];
+      if (p && el.isConnected) { u.name = p.display_name || u.name; u.avatar = p.avatar_url || null; renderUserBody(el); }
+    }).catch(() => {});
+  }
+}
+
 /* ---------------- Send a recipe to another user / manage friends ---------------- */
 const personRow = (p, { fav, action, label, cls = '' }) => `<div class="person" data-uid="${esc(p.id)}">
-  <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
-  <b>${esc(p.display_name || '')}</b>
+  <button class="person-main" data-person="profile">
+    <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
+    <b>${esc(p.display_name || '')}</b>${(statOf('user', p.id) || {}).count ? `<span class="mini-score">${fmtScore(statOf('user', p.id).avg)}</span>` : ''}
+  </button>
   ${fav === undefined ? '' : `<button class="star ${fav ? 'on' : ''}" data-person="star" aria-label="${esc(t('friend_toggle'))}" title="${esc(t('friend_toggle'))}">${fav ? '★' : '☆'}</button>`}
   ${action ? `<button class="btn ${cls}" style="width:auto;height:36px;padding:0 14px" data-person="${action}">${esc(label)}</button>` : ''}</div>`;
 
@@ -2085,6 +2205,7 @@ function openPeoplePage(r) {
     const b = e.target.closest('[data-person]');
     if (!b) return;
     const id = b.closest('.person').dataset.uid, p = known(id);
+    if (b.dataset.person === 'profile') { openUserPage({ id, name: p.display_name, avatar: p.avatar_url }); return; }
     try {
       if (b.dataset.person === 'star') {
         if (isFriend(id)) { await cloud.removeFriend(id); friends = friends.filter(f => f.id !== id); }
