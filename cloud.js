@@ -184,6 +184,32 @@ const cloud = {
     const { error } = await sb.from('removed_recipes').upsert({ recipe_id: id, removed_by: auth.user.id }, { ignoreDuplicates: true });
     if (error) throw error;
   },
+  // Invitations: a personal link; whoever registers through it becomes a friend of the inviter.
+  async myInviteCode() {
+    const { data, error } = await sb.rpc('my_invite_code');
+    if (error) throw error;
+    return data;
+  },
+  async inviteInfo(code) {
+    const { data, error } = await sb.rpc('invite_info', { p_code: code });
+    if (error) throw error;
+    return data || '';
+  },
+  async acceptInvite(code) {
+    const { data, error } = await sb.rpc('accept_invite', { p_code: code });
+    if (error) throw error;
+    return data; // inviter id or null
+  },
+  async inviteStats() {
+    const sent = await sb.from('invite_log').select('id', { count: 'exact', head: true });
+    const joined = await sb.from('referrals').select('user_id', { count: 'exact', head: true }).eq('inviter_id', auth.user.id);
+    return { sent: sent.count || 0, joined: joined.count || 0 };
+  },
+  async logInvites(emails) {
+    if (!emails.length) return;
+    const { error } = await sb.from('invite_log').insert(emails.map(email => ({ inviter_id: auth.user.id, email })));
+    if (error) throw error;
+  },
   // Admin panel (the database refuses everybody who is not in app_admins).
   async adminUsers() {
     const { data, error } = await sb.rpc('admin_user_stats');
@@ -334,6 +360,7 @@ function renderAuth(msg = '', kind = '') {
       <img src="icons/logo.svg" alt="" class="auth-logo">
       <h1>Rifay <b>Umami</b></h1>
       <p class="auth-sub">${esc(t('auth_tagline'))}</p>
+      ${pendingInvite() ? `<div class="auth-invite">👋 ${esc(inviteName ? t('invite_from', inviteName) : t('invite_from_generic'))}</div>` : ''}
       <h2 class="auth-title">${esc(title)}</h2>
       ${oauth}
       <form id="auth-form" novalidate>

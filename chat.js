@@ -128,17 +128,23 @@ function fmtChatTime(iso) {
   if (diff < 7) return d.toLocaleDateString(settings.lang === 'bg' ? 'bg-BG' : 'en-GB', { weekday: 'short' });
   return d.toLocaleDateString(settings.lang === 'bg' ? 'bg-BG' : 'en-GB', { day: 'numeric', month: 'short' });
 }
-function chatView() {
+/* ---------------- Social tab: Chat · Friends · Invite ---------------- */
+const social = { section: 'chat', q: '', found: [] };
+function goSocial(section) {
+  while (state.pages.length) popPage();
+  social.section = section || social.section;
+  state.tab = 'chat';
+  renderTab();
+  window.scrollTo(0, 0);
+}
+
+function chatSectionHTML() {
   const threads = Object.entries(chat.threads).map(([id, list]) => ({ id, list, last: list[list.length - 1] }))
     .sort((a, b) => Date.parse(b.last.created_at) - Date.parse(a.last.created_at));
   const canNotify = 'Notification' in window;
   const notifBanner = canNotify && Notification.permission !== 'granted'
     ? `<button class="notif-banner" data-chat="notif"><span>🔔</span><span><b>${esc(t('chat_notif_title'))}</b><small>${esc(t(Notification.permission === 'denied' ? 'chat_notif_blocked' : 'chat_notif_hint'))}</small></span></button>` : '';
-  return `<section class="view">
-    <div class="topbar"><div class="greeting">${esc(t('chat_sub'))}</div>
-      <button class="btn-login" data-chat="new">✏️ ${esc(t('chat_new'))}</button></div>
-    <h1 class="large-title">${esc(t('chat_title'))}</h1>
-    ${notifBanner}
+  return `${notifBanner}
     ${threads.length ? `<div class="threads">${threads.map(th => {
       const un = chatUnreadFor(th.id), m = th.last;
       return `<button class="thread ${un ? 'unread' : ''}" data-chat-open="${esc(th.id)}">${chatAvatar(th.id)}
@@ -147,7 +153,47 @@ function chatView() {
         <span class="thread-meta"><small>${esc(fmtChatTime(m.created_at))}</small>${un ? `<i class="dot">${un}</i>` : ''}</span></button>`;
     }).join('')}</div>`
       : `<div class="empty"><div class="big">💬</div><h3>${esc(t('chat_empty'))}</h3><p>${esc(t('chat_empty_sub'))}</p>
-        <button class="chip" data-chat="new">✏️ ${esc(t('chat_new'))}</button></div>`}
+        <button class="chip" data-chat="new">✏️ ${esc(t('chat_new'))}</button></div>`}`;
+}
+
+function friendRowHTML(p) {
+  const fr = friends.some(f => f.id === p.id), st = statOf('user', p.id);
+  return `<div class="person" data-uid="${esc(p.id)}">
+    <button class="person-main" data-fr-chat="${esc(p.id)}">
+      <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
+      <b>${esc(p.display_name || '')}</b>${st && st.count ? `<span class="mini-score">${fmtScore(st.avg)}</span>` : ''}</button>
+    <button class="star ${fr ? 'on' : ''}" data-fr-star="${esc(p.id)}" aria-label="${esc(t('friend_toggle'))}" title="${esc(t('friend_toggle'))}">${fr ? '★' : '☆'}</button>
+    <button class="btn primary" style="width:auto;height:36px;padding:0 14px" data-fr-chat="${esc(p.id)}" aria-label="Chat">💬</button></div>`;
+}
+function friendResultsHTML() {
+  const q = social.q.trim();
+  if (q.length < 2) return q ? `<p class="hint">${esc(t('share_min'))}</p>` : '';
+  const rows = social.found.filter(p => !friends.some(f => f.id === p.id));
+  return rows.length ? rows.map(friendRowHTML).join('') : `<p class="hint">${esc(t('share_none'))}</p>`;
+}
+function friendsSectionHTML() {
+  return `<p class="hint" style="margin:6px 4px 10px">${esc(t('friends_hint'))}</p>
+    <div class="group"><label class="search-field" style="border-radius:0;background:transparent">${I.search}
+      <input id="fr-q" type="search" autocomplete="off" placeholder="${esc(t('share_search_ph'))}" value="${esc(social.q)}"></label></div>
+    <div id="fr-results" class="people">${friendResultsHTML()}</div>
+    <div class="group-label">⭐ ${esc(t('friends_title'))} (${friends.length})</div>
+    <div id="fr-list" class="people">${friends.length ? friends.map(friendRowHTML).join('')
+      : `<div class="empty"><div class="big">👥</div><p>${esc(t('friends_empty'))}</p><button class="chip" data-soc="invite">👋 ${esc(t('invite_title'))}</button></div>`}</div>`;
+}
+
+function chatView() {
+  const un = chat.unread;
+  const seg = (id, label, extra = '') => `<button class="${social.section === id ? 'active' : ''}" data-soc="${id}">${label}${extra}</button>`;
+  return `<section class="view">
+    <div class="topbar"><div class="greeting">${esc(t('social_sub'))}</div>
+      ${social.section === 'chat' ? `<button class="btn-login" data-chat="new">✏️ ${esc(t('chat_new'))}</button>` : ''}</div>
+    <h1 class="large-title">${esc(t('social_title'))}</h1>
+    <div class="segmented soc-seg">
+      ${seg('chat', '💬 ' + esc(t('soc_chat')), un ? ` <i class="dot">${un}</i>` : '')}
+      ${seg('friends', '👥 ' + esc(t('soc_friends')), ` <span class="count">${friends.length}</span>`)}
+      ${seg('invite', '👋 ' + esc(t('soc_invite')))}
+    </div>
+    ${social.section === 'friends' ? friendsSectionHTML() : social.section === 'invite' ? inviteSectionHTML() : chatSectionHTML()}
   </section>`;
 }
 
@@ -189,6 +235,8 @@ function renderOpenConversation() {
   hydratePhotos(body);
   if (atBottom) body.scrollTop = body.scrollHeight;
   el.querySelector('#chat-tag').innerHTML = draftTagHTML();
+  const isFriend = friends.some(f => f.id === chat.open);
+  el.querySelector('#chat-banner').innerHTML = isFriend ? '' : `<div class="chat-banner"><span>👤 <b>${esc(chatName(chat.open))}</b> ${esc(t('chat_not_friend'))}</span><button data-chat="addfriend">☆ ${esc(t('chat_add_friend'))}</button></div>`;
 }
 function markOpenRead() {
   if (!chat.open || document.hidden) return;
@@ -206,6 +254,7 @@ function openConversation(partnerId, { recipeId = null } = {}) {
       <button class="nav-btn" data-action="back" aria-label="${esc(t('close'))}">‹ ${esc(t('chat_back'))}</button>
       <h1 class="chat-title">${chatAvatar(partnerId, 'sm')}<span>${esc(chatName(partnerId))}</span></h1><span style="width:70px"></span>
     </div>
+    <div id="chat-banner"></div>
     <div class="chat-body" id="chat-body"></div>
     <div class="chat-compose">
       <div id="chat-tag"></div>
@@ -233,12 +282,51 @@ async function chatSend(el) {
     const m = await cloud.sendMessage(partner, body || t('chat_recipe_default'), rid);
     (chat.threads[partner] = chat.threads[partner] || []).push(m);
     input.value = ''; input.style.height = ''; chat.draftRecipe = null;
+    // Replying to someone is accepting them: they become a friend automatically.
+    if (!friends.some(f => f.id === partner)) {
+      cloud.addFriend(partner).then(() => {
+        friends.push({ id: partner, display_name: chatName(partner), avatar_url: (chat.partners[partner] || {}).avatar || null });
+        if (chat.open === partner) renderOpenConversation();
+      }).catch(() => {});
+    }
     renderOpenConversation();
     const bodyEl = el.querySelector('#chat-body'); bodyEl.scrollTop = bodyEl.scrollHeight;
   } catch (e) {
     toast(String((e && e.message) || '').includes('row-level security') ? t('chat_need_friend') : t('chat_send_err'));
   }
   btn.disabled = false; input.focus();
+}
+
+// Start a conversation from the Friends section (a found person is added to friends first).
+async function openChatWith(id) {
+  const p = friends.find(f => f.id === id) || social.found.find(f => f.id === id);
+  if (!p) return;
+  if (!friends.some(f => f.id === id) && !(chat.threads[id] || []).length) {
+    try { await cloud.addFriend(id); friends.push(p); toast(t('friend_added', p.display_name)); } catch (e) { toast(t('save_err')); return; }
+  }
+  chat.partners[id] = { id, name: p.display_name, avatar: p.avatar_url || null };
+  openConversation(id);
+}
+async function toggleFriendFromSocial(id) {
+  const p = friends.find(f => f.id === id) || social.found.find(f => f.id === id);
+  if (!p) return;
+  try {
+    if (friends.some(f => f.id === id)) { await cloud.removeFriend(id); friends = friends.filter(f => f.id !== id); }
+    else { await cloud.addFriend(id); friends.push(p); toast(t('friend_added', p.display_name)); }
+    renderTab();
+  } catch (e) { toast(t('save_err')); }
+}
+
+async function addPartnerAsFriend() {
+  const id = chat.open;
+  if (!id) return;
+  try {
+    await cloud.addFriend(id);
+    const p = chat.partners[id] || {};
+    if (!friends.some(f => f.id === id)) friends.push({ id, display_name: p.name || '…', avatar_url: p.avatar || null });
+    toast(t('friend_added', p.name || ''));
+    renderOpenConversation();
+  } catch (e) { toast(t('save_err')); }
 }
 
 /* ---------------- Pickers ---------------- */
@@ -282,28 +370,46 @@ function openNewChat(recipeId = null) {
       <div class="group"><label class="search-field" style="border-radius:0;background:transparent">${I.search}
         <input id="nc-q" type="search" autocomplete="off" placeholder="${esc(t('share_search_ph'))}"></label></div>
       <div id="nc-results" class="people"></div>
-      <div class="group-label">⭐ ${esc(t('friends_title'))}</div><div id="nc-friends" class="people"></div></div>`, { modal: true });
-  const row = p => `<button class="person person-pick" data-nc="${esc(p.id)}">
-      <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span><b>${esc(p.display_name || '')}</b><span class="chev">›</span></button>`;
-  const drawFriends = () => {
+      <div class="group-label">⭐ ${esc(t('friends_title'))}</div><div id="nc-friends" class="people"></div>
+      <div style="margin-top:18px"><button class="btn" data-nc-invite>👋 ${esc(t('invite_title'))}</button></div></div>`, { modal: true });
+  const isFriend = id => friends.some(f => f.id === id);
+  // Each row: tap the name to write, tap the star to add/remove the person from friends.
+  const row = p => `<div class="person" data-uid="${esc(p.id)}">
+      <button class="person-main" data-nc="${esc(p.id)}">
+        <span class="avatar">${p.avatar_url ? imgTag(p.avatar_url, '', false) : esc((p.display_name || '?').charAt(0).toUpperCase())}</span>
+        <b>${esc(p.display_name || '')}</b></button>
+      <button class="star ${isFriend(p.id) ? 'on' : ''}" data-nc-star="${esc(p.id)}" aria-label="${esc(t('friend_toggle'))}" title="${esc(t('friend_toggle'))}">${isFriend(p.id) ? '★' : '☆'}</button>
+      <button class="btn primary" style="width:auto;height:36px;padding:0 14px" data-nc="${esc(p.id)}">💬</button></div>`;
+  const draw = () => {
     $('#nc-friends', el).innerHTML = friends.length ? friends.map(row).join('') : `<p class="hint">${esc(t('friends_empty'))}</p>`;
+    const q = $('#nc-q', el).value.trim();
+    $('#nc-results', el).innerHTML = q.length < 2 ? '' : found.length ? found.map(row).join('') : `<p class="hint">${esc(t('share_none'))}</p>`;
     hydratePhotos(el);
   };
-  drawFriends();
+  draw();
   const search = async () => {
     const q = $('#nc-q', el).value.trim();
-    if (q.length < 2) { $('#nc-results', el).innerHTML = ''; return; }
-    try { found = await cloud.searchUsers(q); } catch (e) { found = []; }
-    $('#nc-results', el).innerHTML = found.length ? found.map(row).join('') : `<p class="hint">${esc(t('share_none'))}</p>`;
-    hydratePhotos(el);
+    if (q.length >= 2) { try { found = await cloud.searchUsers(q); } catch (e) { found = []; } }
+    draw();
   };
   el.addEventListener('input', e => { if (e.target.id === 'nc-q') { clearTimeout(tm); tm = setTimeout(search, 250); } });
   el.addEventListener('click', async e => {
+    if (e.target.closest('[data-nc-invite]')) { popPage(); setTimeout(openInvitePage, 280); return; }
+    const star = e.target.closest('[data-nc-star]');
+    if (star) {
+      const id = star.dataset.ncStar, p = friends.find(f => f.id === id) || found.find(f => f.id === id);
+      try {
+        if (isFriend(id)) { await cloud.removeFriend(id); friends = friends.filter(f => f.id !== id); }
+        else { await cloud.addFriend(id); friends.push(p); toast(t('friend_added', p.display_name)); }
+        draw();
+      } catch (err) { toast(t('save_err')); }
+      return;
+    }
     const b = e.target.closest('[data-nc]');
     if (!b) return;
     const id = b.dataset.nc, p = friends.find(f => f.id === id) || found.find(f => f.id === id);
-    if (!friends.some(f => f.id === id) && !(chat.threads[id] || []).length) {
-      // Writing to people is limited to friends (or those who wrote first): offer to add as a friend.
+    if (!isFriend(id) && !(chat.threads[id] || []).length) {
+      // Messaging is limited to friends (or people who wrote first): picking someone to write to adds them.
       try { await cloud.addFriend(id); friends.push(p); toast(t('friend_added', p.display_name)); } catch (err) { toast(t('save_err')); return; }
     }
     chat.partners[id] = { id, name: p.display_name, avatar: p.avatar_url || null };
@@ -315,6 +421,14 @@ function openNewChat(recipeId = null) {
 /* ---------------- Events ---------------- */
 function bindChatEvents() {
   document.addEventListener('click', async e => {
+    const soc = e.target.closest('[data-soc]');
+    if (soc) { social.section = soc.dataset.soc; renderTab(); return; }
+    const invBtn = e.target.closest('[data-inv]');
+    if (invBtn) { handleInviteClick(invBtn); return; }
+    const frChat = e.target.closest('[data-fr-chat]');
+    if (frChat) { openChatWith(frChat.dataset.frChat); return; }
+    const frStar = e.target.closest('[data-fr-star]');
+    if (frStar) { toggleFriendFromSocial(frStar.dataset.frStar); return; }
     const open = e.target.closest('[data-chat-open]');
     if (open) { openConversation(open.dataset.chatOpen); return; }
     const toastEl = e.target.closest('#chat-toast');
@@ -324,6 +438,8 @@ function bindChatEvents() {
       const page = c.closest('.chat-page');
       switch (c.dataset.chat) {
         case 'new': openNewChat(); break;
+        case 'invite': openInvitePage(); break;
+        case 'addfriend': addPartnerAsFriend(); break;
         case 'notif': enableNotifications(); break;
         case 'send': if (page) chatSend(page); break;
         case 'tag': openRecipePicker(id => { chat.draftRecipe = id; renderOpenConversation(); }); break;
@@ -351,6 +467,13 @@ function bindChatEvents() {
     }
   });
   document.addEventListener('input', e => {
+    if (e.target.id === 'fr-q') {
+      social.q = e.target.value; clearTimeout(bindChatEvents._t);
+      bindChatEvents._t = setTimeout(async () => {
+        if (social.q.trim().length >= 2) { try { social.found = await cloud.searchUsers(social.q); } catch (err) { social.found = []; } }
+        const box = document.getElementById('fr-results'); if (box) { box.innerHTML = friendResultsHTML(); hydratePhotos(box); }
+      }, 250);
+    }
     if (e.target.id === 'chat-input') { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 130) + 'px'; }
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { markOpenRead(); if (chat.user) refreshChat(); } });

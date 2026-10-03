@@ -771,3 +771,19 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .adm-user.is-blocked { opacity: .65; }
 .adm-act { margin-top: 4px; padding: 4px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
 .adm-act.danger { color: var(--danger); background: rgba(224, 57, 62, .1); }
+
+/* ---------- v1.12: invites, chat friend banner ---------- */
+.topbar-btns { display: flex; gap: 8px; }
+.btn-login.ghost { color: var(--accent); background: var(--accent-soft); box-shadow: none; }
+.chat-banner { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; background: var(--accent-soft); font-size: .86rem; }
+.chat-banner span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-banner button { flex: none; padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: .8rem; color: #fff; background: linear-gradient(135deg, var(--accent-2), var(--accent)); }
+.auth-invite { margin: 0 0 14px; padding: 10px 12px; border-radius: 14px; font-weight: 600; font-size: .92rem; color: var(--accent); background: var(--accent-soft); }
+.invite-preview { margin-top: 12px; padding: 12px 14px; border-radius: 16px; background: var(--bg-elev); box-shadow: var(--shadow); font-size: .9rem; line-height: 1.5; overflow-wrap: anywhere; }
+.invite-preview small { display: block; margin-bottom: 4px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; font-size: .7rem; font-weight: 700; }
+.invite-actions { display: grid; gap: 10px; margin-top: 14px; }
+.person .person-main + .star { margin-left: auto; }
+.soc-seg { margin: 6px 0 14px; }
+.soc-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.soc-seg .dot { min-width: 18px; height: 18px; line-height: 18px; font-size: .7rem; padding: 0 5px; }
+.soc-seg .count { color: var(--text-3); font-size: .78rem; }

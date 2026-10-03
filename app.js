@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.12.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,15 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    invite_title: 'Покани приятели', invite_short: 'Покани', invite_intro: 'Изпрати лична връзка на приятелите си. Който се регистрира през нея, става твой приятел автоматично и можете веднага да си пишете.',
+    invite_emails: 'Имейли на приятели', invite_emails_ph: 'ivan@abv.bg, maria@gmail.com…', invite_preview: 'Съобщение, което ще се изпрати', invite_send_mail: 'Изпрати по имейл',
+    invite_share: 'Сподели (Viber, WhatsApp, SMS…)', invite_copy: 'Копирай връзката', invite_copied: 'Копирано ✓',
+    invite_hint: 'Писмото се отваря в твоята пощенска програма, подготвено и скрито за получателите (BCC) — натискаш „Изпрати“ там.',
+    invite_need_email: 'Въведи поне един валиден имейл', invite_mail_opened: n => `Отварям пощата за ${n} ${n === 1 ? 'приятел' : 'приятели'}…`,
+    invite_need_update: 'Поканите още не са включени в базата (пусни schema.sql).', invite_accepted: 'Вие с човека, който те покани, вече сте приятели 🎉',
+    invite_from: n => `${n} те покани в Rifay Umami`, invite_from_generic: 'Покани те приятел в Rifay Umami',
+    invite_subject: 'Покана за Rifay Umami — книга с рецепти', invite_text: n => `Здравей! Аз съм ${n}. Ползвам Rifay Umami — приложение с рецепти, където можем да си споделяме рецепти и да си пишем. Регистрирай се оттук и ще сме приятели:`,
+    chat_not_friend: 'не е в приятелите ти', chat_add_friend: 'Добави в приятели',
     admin_activity_title: 'Активност по дни', admin_active_per_day: 'Активни потребители на ден (последните 30 дни)', admin_actions_per_day: 'Действия на ден', admin_activity_none: 'Още няма данни за активност (обнови базата със schema.sql).',
     admin_s_recipes: 'Рецепти', admin_s_messages: 'Съобщения', admin_s_ratings: 'Оценки', admin_s_cooked: 'Готвения',
     admin_blocked: 'Блокиран', admin_badge: 'админ', admin_block: 'Блокирай', admin_unblock: 'Отблокирай',
@@ -124,7 +133,7 @@ const I18N = {
     admin_refresh: 'Обнови', admin_refreshed: 'Обновено', admin_export: 'Свали списъка (CSV)', admin_err_title: 'Няма достъп до данните',
     admin_err: 'Или не си администратор, или базата още не е обновена (пусни supabase/schema.sql и make-admin.sql).',
     admin_privacy_note: 'Имейлите се виждат само от теб като администратор и никога от другите потребители.',
-    tab_chat: 'Чат', chat_title: 'Съобщения', chat_sub: 'Чат с приятели', chat_new: 'Ново', chat_empty: 'Още няма разговори',
+    tab_chat: 'Общност', social_title: 'Общност', social_sub: 'Чат, приятели и покани', soc_chat: 'Чат', soc_friends: 'Приятели', soc_invite: 'Покани', invite_stat_sent: 'изпратени покани', invite_stat_joined: 'присъединили се', chat_title: 'Съобщения', chat_sub: 'Чат с приятели', chat_new: 'Ново', chat_empty: 'Още няма разговори',
     chat_empty_sub: 'Добави приятели и им пиши — можеш да тагваш рецепти в съобщенията.', chat_you: 'Ти', chat_someone: 'Някой',
     chat_recipe_missing: 'Рецептата не е достъпна за теб', chat_recipe_default: 'Виж тази рецепта', chat_back: 'Назад', chat_tag: 'Тагни рецепта',
     chat_ph: 'Напиши съобщение…', chat_send: 'Изпрати', chat_say_hi: 'Поздрави приятеля си 👋', chat_pick_recipe: 'Избери рецепта',
@@ -241,6 +250,15 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    invite_title: 'Invite friends', invite_short: 'Invite', invite_intro: 'Send your personal link to friends. Whoever registers through it becomes your friend automatically and you can write to each other right away.',
+    invite_emails: 'Friends’ emails', invite_emails_ph: 'ivan@mail.com, maria@gmail.com…', invite_preview: 'Message that will be sent', invite_send_mail: 'Send by email',
+    invite_share: 'Share (Viber, WhatsApp, SMS…)', invite_copy: 'Copy the link', invite_copied: 'Copied ✓',
+    invite_hint: 'The email opens in your own mail app, prepared and hidden from recipients (BCC) — you press “Send” there.',
+    invite_need_email: 'Enter at least one valid email', invite_mail_opened: n => `Opening your mail for ${n} friend${n === 1 ? '' : 's'}…`,
+    invite_need_update: 'Invitations are not enabled in the database yet (run schema.sql).', invite_accepted: 'You and the person who invited you are now friends 🎉',
+    invite_from: n => `${n} invited you to Rifay Umami`, invite_from_generic: 'A friend invited you to Rifay Umami',
+    invite_subject: 'Invitation to Rifay Umami — a recipe book', invite_text: n => `Hi! I'm ${n}. I use Rifay Umami — an app with recipes where we can share recipes and chat. Sign up here and we'll be friends:`,
+    chat_not_friend: 'is not in your friends', chat_add_friend: 'Add to friends',
     admin_activity_title: 'Activity by day', admin_active_per_day: 'Active users per day (last 30 days)', admin_actions_per_day: 'Actions per day', admin_activity_none: 'No activity data yet (update the database with schema.sql).',
     admin_s_recipes: 'Recipes', admin_s_messages: 'Messages', admin_s_ratings: 'Ratings', admin_s_cooked: 'Cooked',
     admin_blocked: 'Blocked', admin_badge: 'admin', admin_block: 'Block', admin_unblock: 'Unblock',
@@ -254,7 +272,7 @@ const I18N = {
     admin_refresh: 'Refresh', admin_refreshed: 'Refreshed', admin_export: 'Download list (CSV)', admin_err_title: 'No access to the data',
     admin_err: 'Either you are not an admin or the database is not updated yet (run supabase/schema.sql and make-admin.sql).',
     admin_privacy_note: 'Emails are visible only to you as the admin and never to other users.',
-    tab_chat: 'Chat', chat_title: 'Messages', chat_sub: 'Chat with friends', chat_new: 'New', chat_empty: 'No conversations yet',
+    tab_chat: 'Social', social_title: 'Social', social_sub: 'Chat, friends and invites', soc_chat: 'Chat', soc_friends: 'Friends', soc_invite: 'Invite', invite_stat_sent: 'invites sent', invite_stat_joined: 'joined', chat_title: 'Messages', chat_sub: 'Chat with friends', chat_new: 'New', chat_empty: 'No conversations yet',
     chat_empty_sub: 'Add friends and write to them — you can tag recipes in your messages.', chat_you: 'You', chat_someone: 'Someone',
     chat_recipe_missing: 'This recipe is not available to you', chat_recipe_default: 'Look at this recipe', chat_back: 'Back', chat_tag: 'Tag a recipe',
     chat_ph: 'Write a message…', chat_send: 'Send', chat_say_hi: 'Say hi to your friend 👋', chat_pick_recipe: 'Pick a recipe',
@@ -561,6 +579,7 @@ async function loadUserData() {
     try { removed = new Set(await cloud.removedList()); await DB.put('kv', [...removed], 'removed'); }
     catch (e) { removed = new Set((await DB.get('kv', 'removed')) || []); }
     if (auth.mode === 'user') {
+      await applyPendingInvite();
       incoming = await cloud.incoming().catch(() => ({}));
       friends = await cloud.listFriends().catch(() => []);
       isAdmin = await cloud.isAdmin().catch(() => false);
@@ -958,6 +977,7 @@ function settingsView() {
     ${hiddenCount ? `<div class="group-label">${esc(t('hidden_title'))}</div><div class="group"><button class="row row-btn" data-action="restore-hidden"><span class="lbl"><span class="ic" style="background:#2FA36B">↺</span>${esc(t('restore_hidden'))} (${hiddenCount})</span></button></div>` : ''}
     ${auth.mode === 'user' ? `<div class="group-label">${esc(t('account'))}</div>
     <div class="group">
+      <button class="row row-btn" data-action="invite"><span class="lbl"><span class="ic" style="background:#2FA36B">👋</span>${esc(t('invite_title'))}</span></button>
       <button class="row row-btn" data-action="friends"><span class="lbl"><span class="ic" style="background:#F2A33C">👥</span>${esc(t('friends_title'))} (${friends.length})</span></button>
       ${settingsView.localCount ? `<button class="row row-btn" data-action="upload-local"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬆︎</span>${esc(t('upload_local'))} (${settingsView.localCount})</span></button>` : ''}
       <button class="row row-btn" data-action="logout"><span class="lbl"><span class="ic" style="background:#E0393E">⎋</span>${esc(t('logout'))}</span></button>
@@ -1785,7 +1805,8 @@ function bindEvents() {
     switch (act) {
       case 'new-recipe': if (canWrite()) askAddMode(); else promptLogin(); break;
       case 'login': openAuth({ view: 'signin' }); break;
-      case 'friends': openPeoplePage(null); break;
+      case 'friends': goSocial('friends'); break;
+      case 'invite': openInvitePage(); break;
       case 'admin-users': openAdminUsers(); break;
       case 'restore-hidden': await restoreHidden(); break;
       case 'send-user': if (r) openSharePage(r); break;
@@ -2385,6 +2406,7 @@ async function promptLogin() {
 (async function boot() {
   applyAppearance();
   bindEvents();
+  captureInviteFromUrl();
   bindAuthEvents();
   bindChatEvents();
   initTimer();
@@ -2395,7 +2417,8 @@ async function promptLogin() {
   }
   renderTab();
   // First visit (or after signing out): ask to sign in. "Continue as guest" is remembered.
-  if (auth.mode === 'guest' && !guestChosen()) openAuth({ view: 'signin', dismissible: false });
+  loadInviteInfo();
+  if (auth.mode === 'guest' && (!guestChosen() || pendingInvite())) openAuth({ view: pendingInvite() ? 'signup' : 'signin', dismissible: !!guestChosen() && !pendingInvite() });
   // Pick up recipes other people published while the app was in the background.
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', async () => {
