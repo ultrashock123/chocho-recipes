@@ -155,13 +155,23 @@ function smartParseRecipe(raw) {
     const cut = rest.findIndex((l, i) => i > 1 && (/^\s*\d+[.)]\s+\p{L}/u.test(l) || l.trim().length > 90));
     ingLines = cut >= 0 ? rest.slice(0, cut) : rest; stepLines = cut >= 0 ? rest.slice(cut) : [];
   } else {
-    // no headings: leading short/quantity lines are ingredients, the rest is the method
+    // no headings: short lines that start with a quantity (or contain quantity + unit) are ingredients, wherever they are;
+    // everything else is the method. Times and temperatures ("35 минути", "180°") and full sentences are not ingredients.
     const qtyUnit = /\d[\d.,/½¼¾\s-]*\s*(?:(?:кг|гр|г|мл|л|с\.?\s?л|ч\.?\s?л|ч\.?\s?ч|бр|g|ml|tbsp|tsp|cups?)(?![\p{L}])|скилид|глав|връзк|щипк|чаш|лъжиц|лъжичк)/iu;
-    const isIng = l => { const t = l.trim(); return t && t.length < 70 && (new RegExp(`^[\\s·•*\\-–—]*${SP_Q}`, 'u').test(t) || /^[\s·•*\-–—]\s*\p{L}/u.test(t) || qtyUnit.test(t)); };
-    let s = all.findIndex(isIng), e = s;
-    while (s >= 0 && e < all.length && (isIng(all[e]) || !all[e].trim())) e++;
-    if (s >= 0 && e - s >= 3) { head = all.slice(0, s); ingLines = all.slice(s, e); stepLines = all.slice(e); }
-    else { head = []; stepLines = all; }
+    const timeWord = /(?:минут|мин\b|час(?:а|ове)?\b|градус|°|сек\b|секунд)/i;
+    const isIng = l => {
+      const t = l.trim();
+      if (!t || t.length >= 75 || /^\d+[.)]\s+\p{L}/u.test(t)) return false;
+      if (timeWord.test(t) && !qtyUnit.test(t.replace(timeWord, ''))) return false;
+      if (/[.!?]$/.test(t) && t.split(/\s+/).length > 6) return false;
+      return new RegExp(`^[\\s·•*\\-–—]*${SP_Q}`, 'u').test(t) || /^[\s·•*\-–—]\s*\p{L}/u.test(t) || qtyUnit.test(t);
+    };
+    const idx = all.map((l, i) => (isIng(l) ? i : -1)).filter(i => i >= 0);
+    if (idx.length >= 3) {
+      const set = new Set(idx);
+      head = all.slice(0, idx[0]); ingLines = idx.map(i => all[i]);
+      stepLines = all.filter((l, i) => i > idx[0] && !set.has(i));
+    } else { head = []; stepLines = all; }
   }
   if (ingInline) ingLines = ingInline.split(/\s*[;,]\s*(?![^()]*\))/).concat(ingLines);
   if (stepInline) stepLines = [stepInline].concat(stepLines);
