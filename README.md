@@ -2,7 +2,7 @@
 
 Книга с рецепти — уеб приложение (PWA), което се инсталира на iPhone от Safari → Сподели → „Добави към началния екран“.
 
-Сайт: https://ultrashock123.github.io/chocho-recipes
+Сайт: https://rifayumami.online
 
 ## Структура
 

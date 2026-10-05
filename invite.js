@@ -4,7 +4,7 @@
 'use strict';
 
 const INVITE_KEY = 'chocho.invite';
-const SITE_URL = 'https://ultrashock123.github.io/chocho-recipes';
+const SITE_URL = 'https://rifayumami.online';
 let inviteName = ''; // who invited the person who just opened an invite link
 
 function captureInviteFromUrl() {
