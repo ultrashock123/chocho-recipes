@@ -1684,7 +1684,7 @@ function openPasteImport() {
     const text = box.value.trim();
     if (!text) { toast(t('ai_need_input')); return; }
     const r = smartParseRecipe(text);
-    if (!r.stats.ingredients && (!r.stats.steps || text.split(/s+/).length < 8)) { toast(t('paste_nothing')); return; }
+    if (!r.stats.ingredients && (!r.stats.steps || text.split(/\s+/).length < 8)) { toast(t('paste_nothing')); return; }
     popPage();
     setTimeout(() => {
       openEditor(null, {
