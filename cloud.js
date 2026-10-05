@@ -12,6 +12,16 @@ const guestChosen = () => { try { return localStorage.getItem('chocho.guest') ==
 const setGuestChosen = on => { try { on ? localStorage.setItem('chocho.guest', '1') : localStorage.removeItem('chocho.guest'); } catch (e) {} };
 
 /* ---------------- Session ---------------- */
+let providersEnabled = null; // { google: true/false, facebook: … } as reported by Supabase
+async function loadProviders() {
+  try {
+    const c = cloudCfg();
+    const res = await fetch(`${c.supabaseUrl}/auth/v1/settings`, { headers: { apikey: c.supabaseAnonKey } });
+    providersEnabled = (await res.json()).external || null;
+    if (authView) renderAuth();
+  } catch (e) { providersEnabled = null; }
+}
+
 async function initCloud() {
   if (!cloudOn()) return;
   const c = cloudCfg();
@@ -19,6 +29,7 @@ async function initCloud() {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
   });
   auth.mode = 'guest';
+  loadProviders();
   try { const { data } = await sb.auth.getSession(); await applySession(data.session); } catch (e) {}
   sb.auth.onAuthStateChange((event, session) => {
     // Deferred: calling Supabase from inside this callback can deadlock.
@@ -336,11 +347,12 @@ function renderAuth(msg = '', kind = '') {
   if (!root || !authView) return;
   const { view, dismissible } = authView;
   const cfg = cloudCfg().providers || {};
+  const showP = p => cfg[p] !== false && (!providersEnabled || providersEnabled[p] === true);   // allowed in config AND switched on in Supabase
   const title = { signin: t('auth_signin'), signup: t('auth_signup'), forgot: t('auth_forgot_title'), newpass: t('auth_newpass_title') }[view];
   const oauth = (view === 'signin' || view === 'signup') ? `
-      ${cfg.google !== false ? `<button class="oauth" data-auth="google">${BRAND_ICONS.google}<span>${esc(t('auth_google'))}</span></button>` : ''}
-      ${cfg.facebook !== false ? `<button class="oauth" data-auth="facebook">${BRAND_ICONS.facebook}<span>${esc(t('auth_facebook'))}</span></button>` : ''}
-      ${cfg.google !== false || cfg.facebook !== false ? `<div class="or"><span>${esc(t('auth_or_email'))}</span></div>` : ''}` : '';
+      ${showP('google') ? `<button class="oauth" data-auth="google">${BRAND_ICONS.google}<span>${esc(t('auth_google'))}</span></button>` : ''}
+      ${showP('facebook') ? `<button class="oauth" data-auth="facebook">${BRAND_ICONS.facebook}<span>${esc(t('auth_facebook'))}</span></button>` : ''}
+      ${showP('google') || showP('facebook') ? `<div class="or"><span>${esc(t('auth_or_email'))}</span></div>` : ''}` : '';
   const fields = {
     signin: `<input class="field" type="email" name="email" autocomplete="email" placeholder="${esc(t('auth_email'))}" required>
              <input class="field" type="password" name="password" autocomplete="current-password" placeholder="${esc(t('auth_password'))}" required>`,
