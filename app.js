@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.13.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -111,6 +111,12 @@ const I18N = {
     edit_mine: 'Редактирай като моя версия', copy_mine: 'Копирай в моите', copied: 'Копирано в твоите рецепти',
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
+    add_paste: '📋 Постави текст (безплатно, без AI)', paste_title: 'Постави рецепта', paste_from_clip: 'Постави от клипборда', paste_go: 'Преработи рецептата',
+    paste_hint: 'Копирай рецептата от сайт, съобщение или документ и я постави тук — цялата, заедно със съставките и приготвянето. Приложението само ще ги подреди.',
+    paste_ph: 'Необходими съставки:\n10 бр. сушени чушки\n1 чаена чаша булгур\n…\n\nРецептата:\n1. Заливате чушките с вряла вода…\n2. …',
+    paste_free: 'Работи в телефона ти, безплатно и без интернет услуги. Накрая ще видиш готовата рецепта и ще можеш да поправиш каквото искаш, преди да я запазиш.',
+    paste_nothing: 'Не открих съставки или приготвяне. Опитай с по-пълен текст.', paste_clip_err: 'Не мога да чета клипборда — натисни и задръж в полето и избери „Постави“.',
+    paste_done: (a, b) => `Готово: ${a} продукта, ${b} ${b === 1 ? 'стъпка' : 'стъпки'}. Прегледай и запази.`,
     invite_title: 'Покани приятели', invite_short: 'Покани', invite_intro: 'Изпрати лична връзка на приятелите си. Който се регистрира през нея, става твой приятел автоматично и можете веднага да си пишете.',
     invite_emails: 'Имейли на приятели', invite_emails_ph: 'ivan@abv.bg, maria@gmail.com…', invite_preview: 'Съобщение, което ще се изпрати', invite_send_mail: 'Изпрати по имейл',
     invite_share: 'Сподели (Viber, WhatsApp, SMS…)', invite_copy: 'Копирай връзката', invite_copied: 'Копирано ✓',
@@ -250,6 +256,12 @@ const I18N = {
     edit_mine: 'Edit as my version', copy_mine: 'Copy to mine', copied: 'Copied to your recipes',
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
+    add_paste: '📋 Paste text (free, no AI)', paste_title: 'Paste a recipe', paste_from_clip: 'Paste from clipboard', paste_go: 'Convert the recipe',
+    paste_hint: 'Copy a recipe from a website, message or document and paste it here — the whole thing, ingredients and method. The app will just tidy it up.',
+    paste_ph: 'Ingredients:\n10 dried peppers\n1 cup bulgur\n…\n\nMethod:\n1. Pour boiling water over the peppers…\n2. …',
+    paste_free: 'Runs on your phone, free, with no online service. You will see the finished recipe and can fix anything before saving.',
+    paste_nothing: 'No ingredients or method found. Try with a fuller text.', paste_clip_err: 'Cannot read the clipboard — long-press in the box and choose “Paste”.',
+    paste_done: (a, b) => `Done: ${a} ingredients, ${b} step${b === 1 ? '' : 's'}. Review and save.`,
     invite_title: 'Invite friends', invite_short: 'Invite', invite_intro: 'Send your personal link to friends. Whoever registers through it becomes your friend automatically and you can write to each other right away.',
     invite_emails: 'Friends’ emails', invite_emails_ph: 'ivan@mail.com, maria@gmail.com…', invite_preview: 'Message that will be sent', invite_send_mail: 'Send by email',
     invite_share: 'Share (Viber, WhatsApp, SMS…)', invite_copy: 'Copy the link', invite_copied: 'Copied ✓',
@@ -1563,11 +1575,13 @@ function confettiHTML() {
 const AI_ERRORS = { bad_access_code: 'ai_bad_code', not_configured: 'ai_not_configured' };
 async function askAddMode() {
   const v = await actionSheet(t('add_how'), [
+    { label: t('add_paste'), value: 'paste' },
     { label: t('add_ai'), value: 'ai' },
     { label: t('add_ai_photo'), value: 'ai-photo' },
     { label: t('add_manual'), value: 'manual' },
   ]);
-  if (v === 'manual') openEditor(null);
+  if (v === 'paste') openPasteImport();
+  else if (v === 'manual') openEditor(null);
   else if (v) openAIComposer(v === 'ai-photo');
 }
 
@@ -1645,6 +1659,42 @@ function openAIComposer(withPhoto) {
       b.textContent = t('ai_go');
     }
   });
+}
+
+/* ---------------- Smart paste (no AI) ---------------- */
+function openPasteImport() {
+  const el = pushPage(`<div class="navbar">
+      <button class="nav-btn" data-action="back">${esc(t('cancel'))}</button>
+      <h1>📋 ${esc(t('paste_title'))}</h1><span style="width:60px"></span>
+    </div>
+    <div class="form">
+      <p class="muted" style="margin:10px 4px 12px">${esc(t('paste_hint'))}</p>
+      <div class="group"><textarea class="field" id="paste-text" rows="12" placeholder="${esc(t('paste_ph'))}" style="min-height:260px"></textarea></div>
+      <div style="display:grid;gap:10px;margin-top:16px">
+        <button class="btn" id="paste-clip">📋 ${esc(t('paste_from_clip'))}</button>
+        <button class="btn primary ai-go" id="paste-go">⚙️ ${esc(t('paste_go'))}</button>
+      </div>
+      <p class="hint" style="margin-top:12px">${esc(t('paste_free'))}</p>
+    </div>`, { modal: true });
+  const box = $('#paste-text', el);
+  $('#paste-clip', el).onclick = async () => {
+    try { box.value = await navigator.clipboard.readText(); box.focus(); } catch (e) { toast(t('paste_clip_err')); box.focus(); }
+  };
+  $('#paste-go', el).onclick = () => {
+    const text = box.value.trim();
+    if (!text) { toast(t('ai_need_input')); return; }
+    const r = smartParseRecipe(text);
+    if (!r.stats.ingredients && (!r.stats.steps || text.split(/s+/).length < 8)) { toast(t('paste_nothing')); return; }
+    popPage();
+    setTimeout(() => {
+      openEditor(null, {
+        title: r.title, ingredients: r.ingredients, steps: r.steps, notes: r.notes,
+        categories: (r.categories || []).filter(c => CAT[c]), servings: r.servings, links: r.links,
+      });
+      toast(t('paste_done', r.stats.ingredients, r.stats.steps));
+    }, 280);
+  };
+  setTimeout(() => box.focus(), 350);
 }
 
 /* ---------------- Action sheet ---------------- */
