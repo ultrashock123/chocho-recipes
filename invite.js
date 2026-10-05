@@ -4,7 +4,7 @@
 'use strict';
 
 const INVITE_KEY = 'chocho.invite';
-const SITE_URL = 'https://rifay-recipes.netlify.app';
+const SITE_URL = 'https://ultrashock123.github.io/chocho-recipes';
 let inviteName = ''; // who invited the person who just opened an invite link
 
 function captureInviteFromUrl() {

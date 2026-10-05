@@ -16,8 +16,8 @@
 
 ## 2. Адреси за пренасочване
 **Authentication → URL Configuration**
-- **Site URL:** `https://rifay-recipes.netlify.app`
-- **Redirect URLs:** добави `https://rifay-recipes.netlify.app/**` и (за тест) `http://localhost:8080/**`
+- **Site URL:** `https://ultrashock123.github.io/chocho-recipes`
+- **Redirect URLs:** добави `https://ultrashock123.github.io/**` и (за тест) `http://localhost:8080/**`
 
 ## 3. Вход с имейл
 **Authentication → Providers → Email** е включен по подразбиране. Препоръчвам да оставиш *Confirm email* включено.
