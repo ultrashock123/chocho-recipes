@@ -75,12 +75,25 @@ async function pageText(link: string): Promise<string> {
     });
     if (!res.ok || !(res.headers.get('content-type') || '').includes('html')) return '';
     let html = (await res.text()).slice(0, 1_500_000);
+    // The page head often holds what the visible text lacks: title, description (e.g. "recipe by chef …") and structured Recipe data.
+    const decode = (s: string) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const head: string[] = [];
+    const ttl = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (ttl) head.push('Page title: ' + decode(ttl[1].trim()));
+    for (const m of html.matchAll(/<meta\b[^>]*>/gi)) {
+      const tag = m[0];
+      const name = (tag.match(/(?:name|property)=["']([^"']+)["']/i) || [])[1] || '';
+      const content = (tag.match(/content=["']([^"']*)["']/i) || [])[1] || '';
+      if (content && /^(description|og:title|og:description|twitter:description|author|article:author)$/i.test(name)) head.push(`${name}: ${decode(content)}`);
+    }
+    for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) head.push('Structured data: ' + m[1].trim().slice(0, 8000));
     html = html.replace(/<(script|style|noscript|svg|nav|header|footer|form)[\s\S]*?<\/\1>/gi, ' ')
       .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6]|tr|section|article)>/gi, '\n')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
       .replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
-    return html.length > 40 ? html.slice(0, MAX_CHARS) : '';
+    const all = (head.join('\n') + '\n\n' + html).trim();
+    return html.length > 40 || head.length > 1 ? all.slice(0, MAX_CHARS) : '';
   } catch (_e) {
     return '';
   }
