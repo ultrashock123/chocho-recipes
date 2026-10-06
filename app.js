@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.15.0';
+const APP_VERSION = '1.15.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -1696,7 +1696,7 @@ function openPasteImport() {
     if (!sb || auth.mode !== 'user') { toast(t('paste_ai_login')); return; }
     aiBtn.disabled = true; const label = aiBtn.textContent; aiBtn.textContent = t('paste_ai_working');
     try {
-      const { data, error } = await sb.functions.invoke('ai-recipe', { body: { text } });
+      const { data, error } = await sb.functions.invoke('smart-function', { body: { text } });
       if (error || !data || data.error) {
         let code = data && data.error;
         if (!code && error && error.context && error.context.json) { try { code = (await error.context.json()).error; } catch (e) {} }
