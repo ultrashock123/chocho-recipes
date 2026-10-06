@@ -24,6 +24,7 @@ async function loadChat() {
   const rows = await cloud.loadMessages();
   const threads = {};
   rows.reverse().forEach(m => { const other = myMsg(m) ? m.recipient_id : m.sender_id; (threads[other] = threads[other] || []).push(m); });
+  blockedIds.forEach(id => { delete threads[id]; });   // people I blocked stay out of my chats
   chat.threads = threads;
   const ids = Object.keys(threads).filter(id => !chat.partners[id]);
   if (ids.length) {
@@ -60,6 +61,7 @@ async function refreshChat() {
   } catch (e) {}
 }
 async function onIncoming(m) {
+  if (blockedIds.has(m.sender_id)) return;
   const other = m.sender_id;
   if (!chat.partners[other]) {
     const found = await cloud.profilesByIds([other]).catch(() => ({}));
@@ -252,7 +254,7 @@ function openConversation(partnerId, { recipeId = null } = {}) {
   if (recipeId) chat.draftRecipe = recipeId;
   const el = pushPage(`<div class="navbar">
       <button class="nav-btn" data-action="back" aria-label="${esc(t('close'))}">‹ ${esc(t('chat_back'))}</button>
-      <h1 class="chat-title">${chatAvatar(partnerId, 'sm')}<span>${esc(chatName(partnerId))}</span></h1><span style="width:70px"></span>
+      <h1 class="chat-title">${chatAvatar(partnerId, 'sm')}<span>${esc(chatName(partnerId))}</span></h1><button class="nav-btn" data-chat="menu" aria-label="Menu" style="width:70px;text-align:right">⋯</button>
     </div>
     <div id="chat-banner"></div>
     <div class="chat-body" id="chat-body"></div>
@@ -441,6 +443,12 @@ function bindChatEvents() {
         case 'invite': openInvitePage(); break;
         case 'addfriend': addPartnerAsFriend(); break;
         case 'notif': enableNotifications(); break;
+        case 'menu': {
+          const v = await actionSheet(chatName(chat.open), [{ label: '🚩 Докладвай', value: 'report' }, { label: '🚫 Блокирай', danger: true, value: 'block' }]);
+          if (v === 'report') reportFlow('user', chat.open, chat.open, chatName(chat.open));
+          if (v === 'block') blockFlow(chat.open, chatName(chat.open));
+          break;
+        }
         case 'send': if (page) chatSend(page); break;
         case 'tag': openRecipePicker(id => { chat.draftRecipe = id; renderOpenConversation(); }); break;
         case 'untag': chat.draftRecipe = null; renderOpenConversation(); break;

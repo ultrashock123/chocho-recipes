@@ -1,9 +1,9 @@
 /* Offline support: app shell is precached, recipe photos are cached on first use
    and warmed in the background after install. */
-const VERSION = 'v1.25.1';
+const VERSION = 'v1.26.0';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'images-v1';
-const SHELL_FILES = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'smartparse.js', 'brew.js', 'chat.js', 'invite.js', 'admin.js', 'config.js', 'recipes.json', 'beer-recipes.txt', 'brewui.js', 'manifest.webmanifest',
+const SHELL_FILES = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'smartparse.js', 'brew.js', 'chat.js', 'invite.js', 'admin.js', 'safety.js', 'config.js', 'recipes.json', 'beer-recipes.txt', 'brewui.js', 'manifest.webmanifest',
   'icons/logo.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

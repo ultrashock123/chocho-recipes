@@ -1,8 +1,8 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.25.1';
-const APP_BUILT = '06.10.2026 20:25';   // updated with every release: shown top right so a new version is easy to recognise
+const APP_VERSION = '1.26.0';
+const APP_BUILT = '06.10.2026 20:30';   // updated with every release: shown top right so a new version is easy to recognise
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -615,8 +615,9 @@ async function loadUserData() {
       await applyPendingInvite();
       incoming = await cloud.incoming().catch(() => ({}));
       friends = await cloud.listFriends().catch(() => []);
+      await loadBlocked();
       isAdmin = await cloud.isAdmin().catch(() => false);
-    } else { incoming = {}; friends = []; isAdmin = false; }
+    } else { incoming = {}; friends = []; isAdmin = false; blockedIds = new Set(); }
   }
   if (auth.mode === 'local') { ratingStats = {}; myRatings = {}; }
   else {
@@ -640,7 +641,7 @@ async function reloadAll() {
 function compose() {
   // An original the user replaced with their own edited version is hidden for them.
   const replaced = new Set(custom.filter(r => r.basedOn && isMine(r)).map(r => r.basedOn));
-  const all = [...seeds.filter(s => !replaced.has(s.id) && !removed.has(s.id)).map(s => overrides[s.id] ? Object.assign({}, s, overrides[s.id]) : s), ...custom];
+  const all = [...seeds.filter(s => !replaced.has(s.id) && !removed.has(s.id)).map(s => overrides[s.id] ? Object.assign({}, s, overrides[s.id]) : s), ...custom.filter(r => !blockedIds.has(r.owner) || isMine(r))];
   const visible = [];
   hiddenCount = 0;
   all.forEach(r => {
@@ -1018,17 +1019,21 @@ function settingsView() {
       <button class="row row-btn" data-action="import"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬇︎</span>${esc(t('import'))}</span></button>
     </div>
     <p class="hint">${esc(t('storage_hint'))}</p>` : ''}
-    ${auth.mode === 'user' && isAdmin ? `<div class="group-label">🛡 ${esc(t('admin_section'))}</div><div class="group"><button class="row row-btn" data-action="admin-users"><span class="lbl"><span class="ic" style="background:#6C5CE7">👥</span>${esc(t('admin_users'))}</span><span class="val">${esc(t('admin_users_sub'))}</span></button></div>` : ''}
+    ${auth.mode === 'user' && isAdmin ? `<div class="group-label">🛡 ${esc(t('admin_section'))}</div><div class="group"><button class="row row-btn" data-action="admin-users"><span class="lbl"><span class="ic" style="background:#6C5CE7">👥</span>${esc(t('admin_users'))}</span><span class="val">${esc(t('admin_users_sub'))}</span></button>
+      <button class="row row-btn" data-action="admin-reports"><span class="lbl"><span class="ic" style="background:#E0393E">🚩</span>Доклади</span></button></div>` : ''}
     ${hiddenCount ? `<div class="group-label">${esc(t('hidden_title'))}</div><div class="group"><button class="row row-btn" data-action="restore-hidden"><span class="lbl"><span class="ic" style="background:#2FA36B">↺</span>${esc(t('restore_hidden'))} (${hiddenCount})</span></button></div>` : ''}
     ${auth.mode === 'user' ? `<div class="group-label">${esc(t('account'))}</div>
     <div class="group">
       <button class="row row-btn" data-action="invite"><span class="lbl"><span class="ic" style="background:#2FA36B">👋</span>${esc(t('invite_title'))}</span></button>
       <button class="row row-btn" data-action="friends"><span class="lbl"><span class="ic" style="background:#F2A33C">👥</span>${esc(t('friends_title'))} (${friends.length})</span></button>
       ${settingsView.localCount ? `<button class="row row-btn" data-action="upload-local"><span class="lbl"><span class="ic" style="background:#3A7BF2">⬆︎</span>${esc(t('upload_local'))} (${settingsView.localCount})</span></button>` : ''}
+      <button class="row row-btn" data-action="blocked-list"><span class="lbl"><span class="ic" style="background:#8E8E93">🚫</span>Блокирани потребители (${blockedIds.size})</span></button>
       <button class="row row-btn" data-action="logout"><span class="lbl"><span class="ic" style="background:#E0393E">⎋</span>${esc(t('logout'))}</span></button>
     </div>
-    <p class="hint">${esc(t('cloud_hint'))}</p>` : ''}
-    <p class="footer-note">👨‍🍳 ${esc(t('about'))} ${APP_VERSION}<br>${esc(t('install_hint'))}<br><a href="privacy.html" target="_blank" rel="noopener">${esc(t('privacy'))}</a> · <a href="delete-data.html" target="_blank" rel="noopener">${esc(t('delete_data'))}</a></p>
+    <p class="hint">${esc(t('cloud_hint'))}</p>
+    <div class="group" style="margin-top:18px"><button class="row row-btn" data-action="delete-account" style="color:var(--danger)"><span class="lbl"><span class="ic" style="background:#E0393E">🗑</span>Изтрий акаунта и данните ми</span></button></div>
+    <p class="hint">Изтрива завинаги акаунта, рецептите, снимките и съобщенията ти.</p>` : ''}
+    <p class="footer-note">👨‍🍳 ${esc(t('about'))} ${APP_VERSION}<br>${esc(t('install_hint'))}<br><a href="privacy.html" target="_blank" rel="noopener">${esc(t('privacy'))}</a> · <a href="terms.html" target="_blank" rel="noopener">Условия</a> · <a href="delete-data.html" target="_blank" rel="noopener">${esc(t('delete_data'))}</a></p>
   </section>`;
 }
 
@@ -2106,6 +2111,11 @@ function bindEvents() {
       }
       case 'roulette': openRoulette(); break;
       case 'brewday': if (r) openBrewDay(r.id); break;
+      case 'report-user': reportFlow('user', a.dataset.uid, a.dataset.uid, a.dataset.uname || 'потребител'); break;
+      case 'block-user': blockFlow(a.dataset.uid, a.dataset.uname); break;
+      case 'blocked-list': openBlockedPage(); break;
+      case 'delete-account': deleteAccountFlow(); break;
+      case 'admin-reports': openAdminReports(); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
       case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; renderTab(); break;
@@ -2174,10 +2184,13 @@ function bindEvents() {
             ? { label: t('make_public'), value: 'public' } : { label: t('make_private'), value: 'private' });
         }
         if (auth.mode === 'user' && canSend(r)) opts.push({ label: '💬 ' + t('chat_discuss'), value: 'chat' });
+        if (auth.mode === 'user' && !r.seed && !mine && r.owner) { opts.push({ label: '🚩 Докладвай', value: 'report' }); opts.push({ label: '🚫 Блокирай автора', danger: true, value: 'block' }); }
         const v = await actionSheet(r.title, opts);
         if (v === 'edit') openEditor(r);
         if (v === 'share') openSharePage(r);
         if (v === 'chat') openNewChat(r.id);
+        if (v === 'report') reportFlow('recipe', r.id, r.owner, '„' + r.title + '“');
+        if (v === 'block') blockFlow(r.owner, r.ownerName);
         if (v === 'fork' || v === 'copy') {
           openEditor(null, Object.assign(JSON.parse(JSON.stringify(Object.fromEntries(RECIPE_FIELDS.map(k => [k, r[k]])))),
             { basedOn: v === 'fork' ? r.id : null, tried: r.tried, source: null }));
@@ -2569,6 +2582,7 @@ function userBodyHTML(u) {
       <h2>${esc(u.name || '')}</h2>
     </div>
     ${ratingBoxHTML('user', u.id)}
+    ${auth.mode === 'user' && u.id !== auth.user.id ? `<div class="user-actions" style="display:flex;gap:8px;margin:10px 0"><button class="btn small" data-action="report-user" data-uid="${esc(u.id)}" data-uname="${esc(u.name || '')}">🚩 Докладвай</button><button class="btn small danger" data-action="block-user" data-uid="${esc(u.id)}" data-uname="${esc(u.name || '')}">🚫 Блокирай</button></div>` : ''}
     <div class="section-head"><h2>${esc(t('user_recipes', recipes.length))}</h2></div>
     ${recipes.length ? `<div class="grid">${recipes.map(card).join('')}</div>` : ''}`;
 }

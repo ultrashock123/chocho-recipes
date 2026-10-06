@@ -206,6 +206,42 @@ const cloud = {
     const { error } = await sb.from('recipe_overrides').upsert({ recipe_id: id, data, updated_by: auth.user.id, updated_at: new Date().toISOString() });
     if (error) throw error;
   },
+  // Store requirements: report content, block people, delete the own account.
+  async reportContent(type, targetId, ownerId, reason, details) {
+    const { error } = await sb.from('reports').insert({ reporter_id: auth.user.id, target_type: type, target_id: String(targetId), owner_id: ownerId || null, reason, details: details || null });
+    if (error) throw error;
+  },
+  async blockedList() {
+    const { data, error } = await sb.from('user_blocks').select('blocked_id');
+    if (error) throw error;
+    return (data || []).map(r => r.blocked_id);
+  },
+  async blockUser(id) {
+    const { error } = await sb.from('user_blocks').upsert({ blocker_id: auth.user.id, blocked_id: id }, { ignoreDuplicates: true });
+    if (error) throw error;
+  },
+  async unblockUser(id) {
+    const { error } = await sb.from('user_blocks').delete().eq('blocker_id', auth.user.id).eq('blocked_id', id);
+    if (error) throw error;
+  },
+  async adminReports() {
+    const { data, error } = await sb.rpc('admin_reports');
+    if (error) throw error;
+    return data || [];
+  },
+  async adminResolveReport(id) {
+    const { error } = await sb.rpc('admin_resolve_report', { p_id: id });
+    if (error) throw error;
+  },
+  async deleteMyAccount() {
+    // photos first (the person may remove files in their own folder), then the account with everything attached to it
+    try {
+      const { data: files } = await sb.storage.from(BUCKET).list(auth.user.id, { limit: 1000 });
+      if (files && files.length) await sb.storage.from(BUCKET).remove(files.map(f => `${auth.user.id}/${f.name}`));
+    } catch (e) { /* the account is deleted anyway */ }
+    const { error } = await sb.rpc('delete_my_account');
+    if (error) throw error;
+  },
   async isAdmin() {
     const { data, error } = await sb.from('app_admins').select('user_id').eq('user_id', auth.user.id).maybeSingle();
     return !error && !!data;
