@@ -44,6 +44,20 @@ function youtubeId(link: string): string {
 }
 // Title, channel and the description of a YouTube video (that is where cooks usually write the recipe).
 async function youtubeText(id: string): Promise<string> {
+  // 1) The official YouTube Data API (free key in the secret YOUTUBE_API_KEY): reliable from a server.
+  const apiKey = Deno.env.get('YOUTUBE_API_KEY');
+  if (apiKey) {
+    try {
+      const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${id}&key=${apiKey}`, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const sn = (await r.json())?.items?.[0]?.snippet;
+        if (sn && (sn.description || '').trim().length > 30) {
+          return `YouTube video\nTitle: ${sn.title}\nChannel: ${sn.channelTitle}\nDescription:\n${sn.description}`.slice(0, MAX_CHARS);
+        }
+      } else console.error('youtube api', r.status, (await r.text()).slice(0, 200));
+    } catch (e) { console.error('youtube api failed', String(e)); }
+  }
+  // 2) Without a key: read the watch page (YouTube often hides the description from servers).
   try {
     const res = await fetch(`https://www.youtube.com/watch?v=${id}`, {
       headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -52,10 +66,10 @@ async function youtubeText(id: string): Promise<string> {
     });
     const html = (await res.text()).slice(0, 2_500_000);
     const pick = (re: RegExp) => { const m = html.match(re); if (!m) return ''; try { return JSON.parse(`"${m[1]}"`); } catch (_e) { return m[1]; } };
-    const title = pick(/"title":"((?:[^"\\]|\\.)*)"/) || pick(/<meta name="title" content="([^"]*)"/);
+    const title = pick(/"videoDetails":\{[^}]*?"title":"((?:[^"\\]|\\.)*)"/) || pick(/<meta name="title" content="([^"]*)"/);
     const channel = pick(/"ownerChannelName":"((?:[^"\\]|\\.)*)"/);
     const desc = pick(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
-    if (!desc && !title) return '';
+    if (desc.trim().length < 30) { console.error('youtube: no description in the page'); return ''; }   // nothing to build a recipe from
     return `YouTube video\nTitle: ${title}\nChannel: ${channel}\nDescription:\n${desc}`.slice(0, MAX_CHARS);
   } catch (_e) {
     return '';
