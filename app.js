@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.16.0';
+const APP_VERSION = '1.17.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -115,7 +115,7 @@ const I18N = {
     paste_hint: 'Копирай рецептата от сайт, съобщение или документ и я постави тук — цялата, заедно със съставките и приготвянето. Приложението само ще ги подреди.',
     paste_ph: 'Необходими съставки:\n10 бр. сушени чушки\n1 чаена чаша булгур\n…\n\nРецептата:\n1. Заливате чушките с вряла вода…\n2. …',
     paste_free: 'Работи в телефона ти, безплатно и без интернет услуги. Накрая ще видиш готовата рецепта и ще можеш да поправиш каквото искаш, преди да я запазиш.',
-    paste_ai: '✨ Подреди с AI', paste_ai_working: 'AI подрежда рецептата…', paste_ai_err: 'AI не успя. Опитай пак или ползвай безплатното преработване.', paste_ai_limit: 'Изчерпа лимита си за AI рецепти. Ползвай „Постави текст“ — безплатно е и без лимит.', paste_ai_login: 'AI е само за влезли потребители.', paste_ai_hint: 'Постави цялата страница или съобщение с рецептата — AI сам ще вземе заглавието, продуктите и стъпките и ще махне излишното. Всеки има ограничен брой AI рецепти.', paste_ai_left: n => 'Остават ти ' + n + ' AI рецепти.',
+    paste_ai: '✨ Подреди с AI', paste_ai_working: 'AI подрежда рецептата…', paste_ai_err: 'AI не успя. Опитай пак или ползвай безплатното преработване.', paste_ai_limit: 'Изчерпа лимита си за AI рецепти. Ползвай „Постави текст“ — безплатно е и без лимит.', paste_ai_login: 'AI е само за влезли потребители.', paste_ai_hint: 'Постави цялата страница или съобщение с рецептата — AI сам ще вземе заглавието, продуктите и стъпките и ще махне излишното. Всеки има ограничен брой AI рецепти.', paste_ai_left: n => 'Остават ти ' + n + ' AI рецепти.', paste_ai_photos: 'Снимка или скрийншот (по желание)', paste_ai_photos_hint: 'До 3 снимки. На компютър можеш да поставиш скрийншот директно с Ctrl+V.', paste_ai_max: 'Най-много 3 снимки',
     paste_nothing: 'Не открих съставки или приготвяне. Опитай с по-пълен текст.', paste_clip_err: 'Не мога да чета клипборда — натисни и задръж в полето и избери „Постави“.',
     paste_done: (a, b) => `Готово: ${a} продукта, ${b} ${b === 1 ? 'стъпка' : 'стъпки'}. Прегледай и запази.`,
     invite_title: 'Покани приятели', invite_short: 'Покани', invite_intro: 'Изпрати лична връзка на приятелите си. Който се регистрира през нея, става твой приятел автоматично и можете веднага да си пишете.',
@@ -261,7 +261,7 @@ const I18N = {
     paste_hint: 'Copy a recipe from a website, message or document and paste it here — the whole thing, ingredients and method. The app will just tidy it up.',
     paste_ph: 'Ingredients:\n10 dried peppers\n1 cup bulgur\n…\n\nMethod:\n1. Pour boiling water over the peppers…\n2. …',
     paste_free: 'Runs on your phone, free, with no online service. You will see the finished recipe and can fix anything before saving.',
-    paste_ai: '✨ Tidy up with AI', paste_ai_working: 'AI is tidying the recipe…', paste_ai_err: 'AI failed. Try again or use the free conversion.', paste_ai_limit: 'You have used all your AI recipes. Use "Paste text" — it is free and unlimited.', paste_ai_login: 'AI is for signed-in users only.', paste_ai_hint: 'Paste a whole page or message with the recipe — AI picks the title, ingredients and steps and drops the junk. Everyone has a limited number of AI recipes.', paste_ai_left: n => 'You have ' + n + ' AI recipes left.',
+    paste_ai: '✨ Tidy up with AI', paste_ai_working: 'AI is tidying the recipe…', paste_ai_err: 'AI failed. Try again or use the free conversion.', paste_ai_limit: 'You have used all your AI recipes. Use "Paste text" — it is free and unlimited.', paste_ai_login: 'AI is for signed-in users only.', paste_ai_hint: 'Paste a whole page or message with the recipe — AI picks the title, ingredients and steps and drops the junk. Everyone has a limited number of AI recipes.', paste_ai_left: n => 'You have ' + n + ' AI recipes left.', paste_ai_photos: 'Photo or screenshot (optional)', paste_ai_photos_hint: 'Up to 3 photos. On a computer you can paste a screenshot directly with Ctrl+V.', paste_ai_max: 'At most 3 photos',
     paste_nothing: 'No ingredients or method found. Try with a fuller text.', paste_clip_err: 'Cannot read the clipboard — long-press in the box and choose “Paste”.',
     paste_done: (a, b) => `Done: ${a} ingredients, ${b} step${b === 1 ? '' : 's'}. Review and save.`,
     invite_title: 'Invite friends', invite_short: 'Invite', invite_intro: 'Send your personal link to friends. Whoever registers through it becomes your friend automatically and you can write to each other right away.',
@@ -1665,6 +1665,13 @@ function openPasteImport(ai = false) {
     <div class="form">
       <p class="muted" style="margin:10px 4px 12px">${esc(t('paste_hint'))}</p>
       <div class="group"><textarea class="field" id="paste-text" rows="12" placeholder="${esc(t('paste_ph'))}" style="min-height:260px"></textarea></div>
+      ${ai ? `<div class="group-label">${esc(t('paste_ai_photos'))}</div>
+      <div class="group"><div id="ai-photos"></div>
+        <div class="photo-add" style="padding-top:14px">
+          <button class="btn" data-ai-photo="camera">${I.camera} ${esc(t('camera'))}</button>
+          <button class="btn" data-ai-photo="gallery">${I.image} ${esc(t('gallery'))}</button>
+        </div>
+        <p class="hint" style="margin:10px 4px 0">${esc(t('paste_ai_photos_hint'))}</p></div>` : ''}
       <div style="display:grid;gap:10px;margin-top:16px">
         <button class="btn" id="paste-clip">📋 ${esc(t('paste_from_clip'))}</button>
         ${ai ? `<button class="btn primary ai-go" id="paste-ai">${esc(t('paste_ai'))}</button>`
@@ -1692,16 +1699,54 @@ function openPasteImport(ai = false) {
     }, 280);
   };
   const aiBtn = $('#paste-ai', el);
+  const images = []; // up to 3 screenshots / photos: { data, url }
+  const drawPhotos = () => {
+    $('#ai-photos', el).innerHTML = images.length ? `<div class="photo-strip">${images.map((im, i) => `<div class="photo-tile"><img src="${im.url}" alt="">
+      <button class="x" data-ai-rm="${i}" aria-label="Remove">${I.x}</button></div>`).join('')}</div>` : '';
+  };
+  const addImage = async file => {
+    if (!file || !/^image\//.test(file.type || 'image/')) return;
+    if (images.length >= 3) { toast(t('paste_ai_max')); return; }
+    try {
+      const blob = await compressImage(file, 1568, 0.85);
+      images.push({ data: (await blobToDataURL(blob)).split(',')[1], url: URL.createObjectURL(blob) });
+      drawPhotos();
+    } catch (err) { toast(t('photo_err')); }
+  };
+  if (aiBtn) {
+    el.addEventListener('click', async e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.aiPhoto) { for (const f of await pickFiles(b.dataset.aiPhoto)) await addImage(f); return; }
+      if (b.dataset.aiRm !== undefined) { images.splice(+b.dataset.aiRm, 1); drawPhotos(); }
+    });
+    // Ctrl+V with a screenshot in the clipboard (desktop)
+    el.addEventListener('paste', e => {
+      const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => /^image\//.test(f.type));
+      if (!files.length) return;
+      e.preventDefault();
+      files.forEach(addImage);
+    });
+    $('#paste-clip', el).onclick = async () => {   // the button also takes an image from the clipboard
+      try {
+        for (const item of await navigator.clipboard.read()) {
+          const type = item.types.find(x => x.startsWith('image/'));
+          if (type) { await addImage(new File([await item.getType(type)], 'clip', { type })); return; }
+          if (item.types.includes('text/plain')) { box.value = await (await item.getType('text/plain')).text(); box.focus(); return; }
+        }
+      } catch (err) { toast(t('paste_clip_err')); box.focus(); }
+    };
+  }
   if (aiBtn && sb) sb.functions.invoke('smart-function', { body: { check: true } }).then(({ data }) => {
     if (data && typeof data.left === 'number') { const n = $('#paste-note', el); if (n) n.textContent += ' ' + (data.left === null ? '' : t('paste_ai_left', data.left)); }
   }).catch(() => {});
   if (aiBtn) aiBtn.onclick = async () => {
     const text = box.value.trim();
-    if (!text) { toast(t('ai_need_input')); return; }
+    if (!text && !images.length) { toast(t('ai_need_input')); return; }
     if (!sb || auth.mode !== 'user') { toast(t('paste_ai_login')); return; }
     aiBtn.disabled = true; const label = aiBtn.textContent; aiBtn.textContent = t('paste_ai_working');
     try {
-      const { data, error } = await sb.functions.invoke('smart-function', { body: { text } });
+      const { data, error } = await sb.functions.invoke('smart-function', { body: { text, images: images.map(im => ({ media_type: 'image/jpeg', data: im.data })) } });
       if (error || !data || data.error) {
         let code = data && data.error;
         if (!code && error && error.context && error.context.json) { try { code = (await error.context.json()).error; } catch (e) {} }

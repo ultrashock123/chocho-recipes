@@ -14,7 +14,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 const SYSTEM = `You turn text copied from a web page, message or document into a clean recipe. Reply with ONE JSON object and nothing else.
-The text may contain page junk (menus, icons such as "book icon", dates, comment counts, share buttons, ads, related links, "bon appetit" lines). Ignore all of it.
+The source can be text and/or photos or screenshots of a recipe (read all the text in them, in order). It may contain page junk (menus, icons such as "book icon", dates, comment counts, share buttons, ads, related links, "bon appetit" lines). Ignore all of it.
 Never invent ingredients or steps that are not in the text. Keep the original language (usually Bulgarian).
 JSON fields:
 - "title": short recipe name, no emojis, no site name.
@@ -51,14 +51,19 @@ Deno.serve(async req => {
     if (!unlimited && used >= LIMIT) return json({ error: 'limit', limit: LIMIT }, 429);
 
     const text = String(body.text || '').slice(0, MAX_CHARS).trim();
-    if (text.length < 20) return json({ error: 'too_short' }, 400);
+    const images = (Array.isArray(body.images) ? body.images : []).slice(0, 3)
+      .filter((i: { media_type?: string; data?: string }) => i && ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(i.media_type || '') && typeof i.data === 'string' && i.data.length < 3_000_000);
+    if (text.length < 20 && !images.length) return json({ error: 'too_short' }, 400);
     const day = new Date().toISOString().slice(0, 10);
     const { data: today } = await admin.from('ai_usage').select('n').eq('user_id', u.user.id).eq('day', day).maybeSingle();
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 2000, system: SYSTEM, messages: [{ role: 'user', content: text }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 2000, system: SYSTEM, messages: [{ role: 'user', content: [
+        ...images.map((i: { media_type: string; data: string }) => ({ type: 'image', source: { type: 'base64', media_type: i.media_type, data: i.data } })),
+        { type: 'text', text: text || 'The recipe is in the image(s).' },
+      ] }] }),
     });
     if (!r.ok) return json({ error: 'ai_failed', status: r.status }, 502);
     const out = await r.json();
