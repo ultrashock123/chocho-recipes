@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.19.0';
+const APP_VERSION = '1.19.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -60,7 +60,7 @@ const I18N = {
     f_steps: 'Приготвяне', f_steps_ph: 'Опиши стъпките. Празен ред = нова стъпка.',
     f_notes: 'Лични бележки', f_notes_ph: 'Съвети, какво да променя следващия път…',
     f_links: 'Линкове', f_add_link: 'Добави линк', f_link_ph: 'https://…',
-    f_time: 'Време', f_time_ph: 'напр. 45 мин', f_servings: 'Порции', f_servings_ph: 'напр. 4',
+    f_author_ph: 'Автор (напр. Jamie Oliver) — по желание', f_time: 'Време', f_time_ph: 'напр. 45 мин', f_servings: 'Порции', f_servings_ph: 'напр. 4',
     f_tried: 'Изпробвана от мен', need_title: 'Въведи име на рецептата',
     photo_err: 'Снимката не можа да се зареди',
     settings: 'Настройки', profile: 'Профил', your_name: 'Твоето име', personal: 'Rifay Umami · книга с рецепти',
@@ -206,7 +206,7 @@ const I18N = {
     f_steps: 'Method', f_steps_ph: 'Describe the steps. Blank line = new step.',
     f_notes: 'Personal notes', f_notes_ph: 'Tips, what to change next time…',
     f_links: 'Links', f_add_link: 'Add link', f_link_ph: 'https://…',
-    f_time: 'Time', f_time_ph: 'e.g. 45 min', f_servings: 'Servings', f_servings_ph: 'e.g. 4',
+    f_author_ph: 'Author (e.g. Jamie Oliver) — optional', f_time: 'Time', f_time_ph: 'e.g. 45 min', f_servings: 'Servings', f_servings_ph: 'e.g. 4',
     f_tried: 'Tried it myself', need_title: 'Please enter a recipe name',
     photo_err: 'Could not load the photo',
     settings: 'Settings', profile: 'Profile', your_name: 'Your name', personal: 'Rifay Umami · recipe book',
@@ -1280,6 +1280,8 @@ function editorHTML(d, isNew) {
       </div></div>
 
       <div class="group" style="margin-top:18px">
+        <input class="field" id="e-author" list="e-authors" placeholder="👨‍🍳 ${esc(t('f_author_ph'))}" value="${esc(d.source || '')}" maxlength="60" style="margin-bottom:8px">
+        <datalist id="e-authors">${[...new Set(state.recipes.map(x => x.source).filter(Boolean))].sort().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
         <div class="inline-fields">
           <input class="field" id="e-time" placeholder="⏱ ${esc(t('f_time_ph'))}" value="${esc(d.time)}">
           <input class="field" id="e-servings" placeholder="🍽 ${esc(t('f_servings_ph'))}" value="${esc(d.servings)}">
@@ -1322,11 +1324,11 @@ function openEditor(existing, prefill = null) {
   const d = existing ? JSON.parse(JSON.stringify({
     title: existing.title, images: existing.images || [], categories: existing.categories || [], collection: existing.collection,
     ingredients: existing.ingredients || [], steps: existing.steps || '', notes: existing.notes || '', links: existing.links || [],
-    tried: !!existing.tried, time: existing.time || '', servings: existing.servings || '',
+    tried: !!existing.tried, time: existing.time || '', servings: existing.servings || '', source: existing.source || '',
     visibility: existing.visibility || 'public', basedOn: existing.basedOn || null,
   })) : {
     title: '', images: [], categories: state.cat ? [state.cat] : [], collection: 'mine', ingredients: [], steps: '', notes: '',
-    links: [], tried: false, time: '', servings: '', visibility: 'public', basedOn: null,
+    links: [], tried: false, time: '', servings: '', source: '', visibility: 'public', basedOn: null,
     ...(prefill || {}),
   };
   const added = isNew && prefill && prefill.images ? [...prefill.images] : [];   // photos stored during this edit session (AI import uploads its photos up front)
@@ -1344,6 +1346,7 @@ function openEditor(existing, prefill = null) {
     d.notes = $('#e-notes', el).value.trim();
     d.time = $('#e-time', el).value.trim();
     d.servings = $('#e-servings', el).value.trim();
+    d.source = $('#e-author', el).value.trim() || null;
     d.tried = $('#e-tried', el).checked;
     d.links = [...el.querySelectorAll('[data-link-url]')].map((inp, i) => {
       let url = inp.value.trim();
