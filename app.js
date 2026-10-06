@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.22.2';
+const APP_VERSION = '1.22.3';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -443,7 +443,8 @@ async function photoURL(ref) {
 function imgTag(ref, cls = '', lazy = true) {
   if (!ref) return '';
   if (ref.startsWith('idb:')) return `<img class="${cls}" data-photo="${esc(ref)}" alt="">`;
-  return `<img class="${cls}" src="${esc(ref)}" alt="" ${lazy ? 'loading="lazy" decoding="async"' : ''}>`;
+  const yt = /i\.ytimg\.com\/vi\/[\w-]+\/maxresdefault/.test(ref) ? ` onerror="this.onerror=null;this.src=this.src.replace('maxresdefault','hqdefault')" onload="if(this.naturalWidth&&this.naturalWidth<=120)this.src=this.src.replace('maxresdefault','hqdefault')"` : '';
+  return `<img class="${cls}" src="${esc(ref)}" alt=""${yt} ${lazy ? 'loading="lazy" decoding="async"' : ''}>`;
 }
 async function hydratePhotos(root = document) {
   for (const img of root.querySelectorAll('img[data-photo]')) {
@@ -1195,11 +1196,12 @@ function youtubeInfo(url) {
 }
 const otherLinks = r => (r.links || []).filter(l => !youtubeInfo(l.url));
 // The photo shown for a recipe: its own first photo, otherwise the thumbnail of its YouTube video.
+const ytThumb = id => `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
 function coverRef(r) {
   const own = (r.images || [])[0];
   if (own) return own;
   const v = (r.links || []).map(l => youtubeInfo(l.url)).find(Boolean);
-  return v ? `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg` : '';
+  return v ? ytThumb(v.id) : '';
 }
 const galleryImages = r => ((r.images || []).length ? r.images : coverRef(r) ? [coverRef(r)] : []);
 function videosHTML(r) {
@@ -1855,6 +1857,8 @@ function openPasteImport(ai = false) {
       aiBtn.textContent = t('paste_ai_saving');
       const refs = [];   // the photos the recipe came from are kept as the recipe's photos
       for (const im of images) { try { refs.push(await storePhoto(im.blob, 1600)); } catch (err) { /* the recipe is still created */ } }
+      const yv = data.url ? youtubeInfo(data.url) : null;
+      if (yv && !refs.length) refs.push(ytThumb(yv.id));   // a YouTube link: the video's thumbnail becomes the recipe photo
       popPage();
       setTimeout(() => {
         openEditor(null, {
