@@ -76,6 +76,43 @@ async function youtubeText(id: string): Promise<string> {
   }
 }
 
+// eBag loads its recipes with a script; the same page is available as data at "<page>?metadata_only=1" (what the browser itself reads).
+async function ebagText(u: URL): Promise<string> {
+  try {
+    const res = await fetch(`${u.origin}${u.pathname}?metadata_only=1`, {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; RifayUmami/1.0)', accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return '';
+    const j = await res.json();
+    const parts: string[] = [];
+    const seo = j?.seo_details;
+    if (seo?.title) parts.push('Page title: ' + seo.title);
+    if (seo?.description) parts.push('Description: ' + seo.description);
+    const strings = (v: unknown, out: string[]) => {
+      if (typeof v === 'string') out.push(v);
+      else if (Array.isArray(v)) v.forEach(x => strings(x, out));
+      else if (v && typeof v === 'object') Object.values(v as Record<string, unknown>).forEach(x => strings(x, out));
+    };
+    for (const b of j?.page_data?.content?.blocks || []) {
+      if (b?.tunes?.visibility?.isHidden && b?.type !== 'code') continue;
+      const raw: string[] = [];
+      strings(b?.data, raw);
+      for (const s of raw) {
+        const t = s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
+          .replace(/<(style|script|head|noscript)[\s\S]*?<\/\1>/gi, ' ')
+          .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6]|ul|ol)>/gi, '\n')
+          .replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+        if (t.length > 1 && !/^[A-Z0-9]{10,16}$/.test(t) && !/^_(self|blank)$/.test(t)) parts.push(t);
+      }
+    }
+    const all = parts.join('\n').trim();
+    return all.length > 80 ? all.slice(0, MAX_CHARS) : '';
+  } catch (_e) {
+    return '';
+  }
+}
+
 // Downloads one public web page and returns its readable text ('' when it cannot be opened). Local/private addresses are refused.
 async function pageText(link: string): Promise<string> {
   try {
@@ -83,6 +120,7 @@ async function pageText(link: string): Promise<string> {
     const h = u.hostname.toLowerCase();
     if (!/^https?:$/.test(u.protocol) || h === 'localhost' || h.endsWith('.local') || h.endsWith('.internal')
       || /^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h.includes(':') || !h.includes('.')) return '';
+    if (/(^|\.)ebag\.bg$/.test(h)) { const e = await ebagText(u); if (e) return e; }
     const res = await fetch(u.toString(), {
       headers: { 'user-agent': 'Mozilla/5.0 (compatible; RifayUmami/1.0)', accept: 'text/html,application/xhtml+xml' },
       redirect: 'follow', signal: AbortSignal.timeout(10000),
