@@ -1,9 +1,9 @@
 // Rifay Umami — "Подреди с AI": turns a pasted web page / message into a structured recipe.
-// Runs on Supabase (Edge Function). Needs the secret ANTHROPIC_API_KEY. Only signed-in users, with a daily limit each.
+// Runs on Supabase (Edge Function). Needs the secret ANTHROPIC_API_KEY. Only signed-in users, with a total limit each.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const MODEL = 'claude-haiku-4-5-20251001';
-const DAILY_LIMIT = 15;
+const LIMIT = 20; // AI recipes per user, in total (the admin has no limit)
 const MAX_CHARS = 24000;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -41,14 +41,19 @@ Deno.serve(async req => {
     if (!key) return json({ error: 'not_configured' }, 503);
 
     const body = await req.json().catch(() => ({}));
+
+    // total limit per user (admins are unlimited)
+    const { data: adm } = await admin.from('app_admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
+    const unlimited = !!adm;
+    const { data: rows } = await admin.from('ai_usage').select('n').eq('user_id', u.user.id);
+    const used = (rows || []).reduce((s: number, x: { n: number }) => s + x.n, 0);
+    if (body.check) return json({ left: unlimited ? null : Math.max(0, LIMIT - used) });
+    if (!unlimited && used >= LIMIT) return json({ error: 'limit', limit: LIMIT }, 429);
+
     const text = String(body.text || '').slice(0, MAX_CHARS).trim();
     if (text.length < 20) return json({ error: 'too_short' }, 400);
-
-    // daily limit per user
     const day = new Date().toISOString().slice(0, 10);
-    const { data: usage } = await admin.from('ai_usage').select('n').eq('user_id', u.user.id).eq('day', day).maybeSingle();
-    const used = usage?.n ?? 0;
-    if (used >= DAILY_LIMIT) return json({ error: 'limit', limit: DAILY_LIMIT }, 429);
+    const { data: today } = await admin.from('ai_usage').select('n').eq('user_id', u.user.id).eq('day', day).maybeSingle();
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -62,7 +67,7 @@ Deno.serve(async req => {
     if (!m) return json({ error: 'ai_failed' }, 502);
     const rec = JSON.parse(m[0]);
 
-    await admin.from('ai_usage').upsert({ user_id: u.user.id, day, n: used + 1 });
+    await admin.from('ai_usage').upsert({ user_id: u.user.id, day, n: (today?.n ?? 0) + 1 });
     return json({
       title: String(rec.title || ''),
       ingredients: (Array.isArray(rec.ingredients) ? rec.ingredients : []).map(String),
@@ -71,7 +76,7 @@ Deno.serve(async req => {
       servings: String(rec.servings || ''),
       time: String(rec.time || ''),
       categories: Array.isArray(rec.categories) ? rec.categories.map(String).slice(0, 2) : [],
-      left: DAILY_LIMIT - used - 1,
+      left: unlimited ? null : Math.max(0, LIMIT - used - 1),
     });
   } catch (_e) {
     return json({ error: 'ai_failed' }, 500);
