@@ -28,6 +28,30 @@ JSON fields:
 - "time": total time like "45 мин" or "1 ч 30 мин", or "".
 - "categories": up to 2 of: chicken, pork, beef, pasta, fish, rice, bread, pizza, dessert, sauce, salad, meze, veggie, eggs, drinks, other.`;
 
+// Downloads one public web page and returns its readable text ('' when it cannot be opened). Local/private addresses are refused.
+async function pageText(link: string): Promise<string> {
+  try {
+    const u = new URL(link);
+    const h = u.hostname.toLowerCase();
+    if (!/^https?:$/.test(u.protocol) || h === 'localhost' || h.endsWith('.local') || h.endsWith('.internal')
+      || /^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h.includes(':') || !h.includes('.')) return '';
+    const res = await fetch(u.toString(), {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; RifayUmami/1.0)', accept: 'text/html,application/xhtml+xml' },
+      redirect: 'follow', signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('html')) return '';
+    let html = (await res.text()).slice(0, 1_500_000);
+    html = html.replace(/<(script|style|noscript|svg|nav|header|footer|form)[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6]|tr|section|article)>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+    return html.length > 40 ? html.slice(0, MAX_CHARS) : '';
+  } catch (_e) {
+    return '';
+  }
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   try {
@@ -53,7 +77,15 @@ Deno.serve(async req => {
     if (body.check) return json({ left: unlimited ? null : Math.max(0, LIMIT - used) });
     if (!unlimited && used >= LIMIT) return json({ error: 'limit', limit: LIMIT }, 429);
 
-    const text = String(body.text || '').slice(0, MAX_CHARS).trim();
+    let text = String(body.text || '').slice(0, MAX_CHARS).trim();
+    // Only a link was pasted: open that one page and use its text (the AI itself cannot open links).
+    let sourceUrl = '';
+    if (/^https?:\/\/\S+$/i.test(text)) {
+      sourceUrl = text;
+      const page = await pageText(text);
+      if (!page) return json({ error: 'fetch_failed' }, 422);
+      text = page;
+    }
     const images = (Array.isArray(body.images) ? body.images : []).slice(0, 3)
       .filter((i: { media_type?: string; data?: string }) => i && ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(i.media_type || '') && typeof i.data === 'string' && i.data.length < 3_000_000);
     if (text.length < 20 && !images.length) return json({ error: 'too_short' }, 400);
@@ -85,6 +117,7 @@ Deno.serve(async req => {
       time: String(rec.time || ''),
       author: String(rec.author || ''),
       book: String(rec.book || ''),
+      url: sourceUrl,
       categories: Array.isArray(rec.categories) ? rec.categories.map(String).slice(0, 2) : [],
       left: unlimited ? null : Math.max(0, LIMIT - used - 1),
     });
