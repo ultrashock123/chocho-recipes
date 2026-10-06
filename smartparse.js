@@ -83,7 +83,7 @@ const SP_STEP_HEAD = /^(?:#+\s*)?[*_]*(?:рецептата|приготвяне
 
 /* ---------- ingredients ---------- */
 function spIngredientLines(lines, servings) {
-  const out = []; let estimated = 0;
+  const out = [], extra = []; let estimated = 0;
   const qtyOnly = line => {
     const m = line.match(new RegExp(`^${SP_Q}\\s*(.*)$`, 'u'));
     if (!m) return null;
@@ -95,6 +95,7 @@ function spIngredientLines(lines, servings) {
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].replace(/^[\s·•*\-–—]+/, '').replace(/[\s;,.]+$/, '').replace(/\s+/g, ' ').trim();
     if (!line) continue;
+    if (/^[👉➡→]/u.test(line)) { extra.push(line.replace(/^[👉➡→️\s]+/u, '')); continue; }   // an instruction in the list ("👉 Разделяш на 5 топки…") is a step
     if (/:$/.test(line) && line.length < 60) { out.push('## ' + line.replace(/:$/, '')); continue; }       // sub-heading ("За соса:")
     // name line followed by a quantity-only line (supichka style)
     const next = lines[i + 1] ? lines[i + 1].replace(/^[\s·•*\-–—]+/, '').trim() : '';
@@ -112,6 +113,7 @@ function spIngredientLines(lines, servings) {
     m = line.match(new RegExp(`^([^\\d½¼¾⅓⅔⅛]+?)[\\s\\-–:(]*${SP_Q}\\s*(.*)$`, 'u'));
     if (m) {
       const su = spSplitUnit(m[3].trim().replace(/\)$/, ''));
+      if (su && /\/\s*~?\s*$/.test(m[1]) && su[1]) { out.push(`${spFmtQ(m[2])} ${su[0]} ${spLowerFirst(su[1])} / ${spLowerFirst(m[1].replace(/[\s/~]+$/, ''))}`); continue; }   // "щипка мая / ~38 гр закваска"
       if (su && m[1].trim().length <= 60) { out.push(`${spFmtQ(m[2])} ${su[0]} ${spLowerFirst(m[1].trim())}${su[1] ? ', ' + su[1] : ''}`); continue; }
     }
     // "щипка сол", "връзка магданоз": the unit comes first, the amount is one
@@ -121,7 +123,7 @@ function spIngredientLines(lines, servings) {
     const est = !/\d/.test(line) ? spEstimate(line, servings) : null;
     if (est) { out.push(est); estimated++; } else out.push(spLowerFirst(line));
   }
-  return { list: out, estimated };
+  return { list: out, estimated, extra };
 }
 
 /* ---------- categories ---------- */
@@ -201,14 +203,16 @@ function smartParseRecipe(raw) {
   // 5) method: numbered steps if present (text before the first one is a description), otherwise one step per paragraph
   const numRe = /^(?:шаг|стъпка|step)?\s*(\d+)\s*[.):-]\s+(.*)$/i;
   const pre = [], numbered = []; let cur = null, seen = false;
+  const closing = /^рецепт(?:ата|а)\s+(?:за|на)\s+.+?\s+(?:е\s+)?(?:изпълнена|готова)[.!]*$/i;
   for (const l of stepLines) {
     const t = l.trim(), m = t.match(numRe);
     if (m) { seen = true; if (cur !== null) numbered.push(cur); cur = m[2]; continue; }
-    if (!t) { if (!seen && cur !== null) { pre.push(cur); cur = null; } continue; }
+    if (!t) { if (cur !== null) { (seen ? numbered : pre).push(cur); cur = null; } continue; }   // a blank line ends a paragraph / step
+    if (closing.test(t)) continue;                                                              // "Рецептата за … е изпълнена!"
     cur = cur !== null ? cur + ' ' + t : t;
   }
   if (cur !== null) (seen ? numbered : pre).push(cur);
-  const stepsList = (seen ? numbered : pre).map(s => s.trim()).filter(Boolean);
+  const stepsList = (seen ? numbered : pre).map(s => s.trim()).filter(Boolean).concat(ing.extra);
   const intro = seen ? pre : [];
   const noteParts = [];
   if (intro.length) noteParts.push(intro.join('\n'));

@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.14.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -973,12 +973,6 @@ function settingsView() {
     <div class="group-label">${esc(t('language'))}</div>
     <div class="group"><div class="seg-row">${seg('lang', [['bg', '🇧🇬 Български'], ['en', '🇬🇧 English']])}</div></div>
 
-    <div class="group-label">✨ ${esc(t('ai_section'))}</div>
-    <div class="group">
-      <input class="field" id="ai-code" type="password" autocomplete="off" autocapitalize="off" placeholder="${esc(t('ai_code'))}" value="${esc(settings.aiCode || '')}">
-    </div>
-    <p class="hint">${esc(t('ai_code_hint'))}</p>
-
     ${auth.mode === 'local' ? `<div class="group-label">${esc(t('data'))}</div>
     <div class="group">
       <button class="row row-btn" data-action="export"><span class="lbl"><span class="ic" style="background:#2FA36B">⬆︎</span>${esc(t('export'))}</span></button>
@@ -1576,13 +1570,10 @@ const AI_ERRORS = { bad_access_code: 'ai_bad_code', not_configured: 'ai_not_conf
 async function askAddMode() {
   const v = await actionSheet(t('add_how'), [
     { label: t('add_paste'), value: 'paste' },
-    { label: t('add_ai'), value: 'ai' },
-    { label: t('add_ai_photo'), value: 'ai-photo' },
     { label: t('add_manual'), value: 'manual' },
   ]);
   if (v === 'paste') openPasteImport();
   else if (v === 'manual') openEditor(null);
-  else if (v) openAIComposer(v === 'ai-photo');
 }
 
 function openAIComposer(withPhoto) {
@@ -1766,9 +1757,14 @@ async function importBackup() {
 }
 
 /* ---------------- Events ---------------- */
+let downOnBackdrop = false;
 function bindEvents() {
+  const markDown = e => { downOnBackdrop = e.target.id === 'pages-root'; };
+  document.addEventListener('mousedown', markDown, true);
+  document.addEventListener('touchstart', markDown, { capture: true, passive: true });
   document.addEventListener('click', async e => {
-    if (e.target.id === 'pages-root') { popPage(); return; } // click on the dimmed backdrop (desktop)
+    // click on the dimmed backdrop (desktop) — but not when a text selection started inside a field and ended outside it
+    if (e.target.id === 'pages-root') { if (downOnBackdrop) popPage(); return; }
     const tm = e.target.closest('[data-timer],[data-timer-set]');
     if (tm) { handleTimerClick(tm); return; }
     const sv = e.target.closest('[data-serv],[data-serv-mult]');
@@ -2047,8 +2043,9 @@ function scaleLine(line, f) {
   return f > 1 ? PLURALS.reduce((s, [re, to]) => s.replace(re, to), out) : out;
 }
 function scaleNumbers(line, f) {
-  return line.replace(QTY_RE, (m, a1, a2, b1, b2, b3, c1, c2, d1, d2, e1, g1) => {
+  return line.replace(QTY_RE, (m, a1, a2, b1, b2, b3, c1, c2, d1, d2, e1, g1, offset, whole) => {
     if (m[0] === '(') return m;
+    if (/(?<![\p{L}])по\s*~?\s*$/iu.test(whole.slice(0, offset))) return m;   // "по 200 г" (per piece) stays; only the count scales
     let v;
     if (a1 !== undefined) v = +a1 + FRAC_CHARS[a2];
     else if (b1 !== undefined) v = +b1 + (+b2) / (+b3);
