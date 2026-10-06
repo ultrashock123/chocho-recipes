@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.21.3';
+const APP_VERSION = '1.21.4';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -112,6 +112,7 @@ const I18N = {
     display_name_label: 'Показвано име', display_name_hint: 'Така те виждат другите — като автор на рецептите ти и при търсене.', name_saved: 'Името е запазено',
     send_user: 'Изпрати',
     add_paste: '📋 Постави текст (безплатно, без AI)', paste_title: 'Постави рецепта', paste_from_clip: 'Постави от клипборда', paste_go: 'Преработи рецептата',
+    paste_ai_intro: 'Постави тук каквото имаш — AI сам ще намери рецептата:\n🔗 линк към страница с рецепта (сайт, блог)\n▶️ линк към YouTube клип — рецептата се чете от описанието му\n📋 цял текст, копиран от страница или съобщение (Ctrl+A, Ctrl+C) — може и разхвърлян, с менюта и реклами\n📷 снимка или принтскрийн на рецепта (до 3) — от камера, галерия или с Ctrl+V\nСлед това я подрежда, превежда на български и намира автора.', paste_ai_ph: 'Постави тук линк (сайт или YouTube), цял текст на рецепта или добави снимка отдолу…',
     paste_hint: 'Копирай рецептата от сайт, съобщение или документ и я постави тук — цялата, заедно със съставките и приготвянето. Приложението само ще ги подреди.',
     paste_ph: 'Необходими съставки:\n10 бр. сушени чушки\n1 чаена чаша булгур\n…\n\nРецептата:\n1. Заливате чушките с вряла вода…\n2. …',
     paste_free: 'Работи в телефона ти, безплатно и без интернет услуги. Накрая ще видиш готовата рецепта и ще можеш да поправиш каквото искаш, преди да я запазиш.',
@@ -258,6 +259,7 @@ const I18N = {
     display_name_label: 'Display name', display_name_hint: 'This is how others see you — as the author of your recipes and in search.', name_saved: 'Name saved',
     send_user: 'Send',
     add_paste: '📋 Paste text (free, no AI)', paste_title: 'Paste a recipe', paste_from_clip: 'Paste from clipboard', paste_go: 'Convert the recipe',
+    paste_ai_intro: 'Paste whatever you have — AI finds the recipe by itself:\n🔗 a link to a recipe page (site, blog)\n▶️ a YouTube link — the recipe is read from its description\n📋 text copied from a page or message (Ctrl+A, Ctrl+C) — messy is fine, menus and ads included\n📷 a photo or screenshot of a recipe (up to 3) — camera, gallery or Ctrl+V\nThen it tidies it up, translates it into Bulgarian and finds the author.', paste_ai_ph: 'Paste a link (site or YouTube), the full text of a recipe, or add a photo below…',
     paste_hint: 'Copy a recipe from a website, message or document and paste it here — the whole thing, ingredients and method. The app will just tidy it up.',
     paste_ph: 'Ingredients:\n10 dried peppers\n1 cup bulgur\n…\n\nMethod:\n1. Pour boiling water over the peppers…\n2. …',
     paste_free: 'Runs on your phone, free, with no online service. You will see the finished recipe and can fix anything before saving.',
@@ -1704,8 +1706,8 @@ function openPasteImport(ai = false) {
       <h1>${ai ? esc(t('add_ai')) : '📋 ' + esc(t('paste_title'))}</h1><span style="width:60px"></span>
     </div>
     <div class="form">
-      <p class="muted" style="margin:10px 4px 12px">${esc(t('paste_hint'))}</p>
-      <div class="group"><textarea class="field" id="paste-text" rows="12" placeholder="${esc(t('paste_ph'))}" style="min-height:260px"></textarea></div>
+      <p class="muted" style="margin:10px 4px 12px;white-space:pre-line">${esc(ai ? t('paste_ai_intro') : t('paste_hint'))}</p>
+      <div class="group"><textarea class="field" id="paste-text" rows="12" placeholder="${esc(ai ? t('paste_ai_ph') : t('paste_ph'))}" style="min-height:260px"></textarea></div>
       ${ai ? `<div class="group-label">${esc(t('paste_ai_photos'))}</div>
       <div class="group"><div id="ai-photos"></div>
         <div class="photo-add" style="padding-top:14px">
