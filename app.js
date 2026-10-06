@@ -1,8 +1,8 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.25.0';
-const APP_BUILT = '06.10.2026 15:02';   // updated with every release: shown top right so a new version is easy to recognise
+const APP_VERSION = '1.25.1';
+const APP_BUILT = '06.10.2026 20:25';   // updated with every release: shown top right so a new version is easy to recognise
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
