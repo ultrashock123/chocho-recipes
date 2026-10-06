@@ -198,7 +198,13 @@ function smartParseRecipe(raw) {
   const time = tm ? `${tm[1]} мин` : '';
   // author ("By Jamie Oliver") and book ("Recipe From" + next line) printed on the page
   const byM = all.map(l => l.trim().match(/^[Bb]y\s+(\p{Lu}[\p{L}.'’-]*(?:\s+\p{Lu}[\p{L}.'’-]*){0,3})$/u)).find(Boolean);
-  const author = byM ? byM[1] : '';
+  const NAME = String.raw`(\p{Lu}[\p{L}.'’-]*(?:[ \t]+\p{Lu}[\p{L}.'’-]*){0,3})`;
+  let author = byM ? byM[1] : '';
+  if (!author) {   // "Автор: Лора Найденова", "Рецептата е от шеф Лора Найденова", "Recipe by chef Jamie Oliver"
+    const re = new RegExp(String.raw`(?:[Аа]втор(?:ът)?\s*[:\-–]\s*|[Рр]ецепт(?:ата|а)\s+(?:е\s+)?(?:от|на)\s+|[Rr]ecipe\s+by\s+)(?:(?:[Шш]еф|[Гг]отвач|[Cc]hef)\s+)?${NAME}`, 'u');
+    const hit = text.match(re);
+    if (hit) author = hit[1];
+  }
   const rfAt = all.findIndex(l => /^recipe\s+from\s*$/i.test(l.trim()));
   const book = rfAt >= 0 ? (all.slice(rfAt + 1, rfAt + 4).map(l => l.trim()).find(l => l && !/^by\s/i.test(l)) || '') : '';
   const titleAndIng = (title + ' ' + ingLines.join(' '));

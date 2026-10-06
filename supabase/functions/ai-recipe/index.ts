@@ -23,7 +23,7 @@ JSON fields:
 - "steps": array of strings, one per step, no numbering, copied or lightly tidied from the text.
 - "notes": 0-2 short sentences of useful intro or tips from the text, or "".
 - "servings": number of servings as a string, or "" if unknown.
-- "author": the chef or author of the recipe if the page names one (e.g. "By Jamie Oliver" gives "Jamie Oliver"; keep names of people as written, do not translate them), else "".
+- "author": the person the recipe is credited to, if the page says so anywhere. It may be a byline ("By Jamie Oliver"), a label ("Автор: Лора Найденова") or a sentence ("Рецептата е от шеф Лора Найденова", "recipe by chef X", "от X"). Return only the name without titles like "шеф", "chef", "готвач" (so "шеф Лора Найденова" gives "Лора Найденова"). Keep names of people as written in the source (do not translate or transliterate them). Do not return the website or shop name as author. If no person is credited, "".
 - "book": the cookbook or series it comes from if stated (e.g. "Recipe From Jamie's 20-Minute Meals"), translated to Bulgarian only if it is a descriptive phrase; else "".
 - "time": total time like "45 мин" or "1 ч 30 мин", or "".
 - "categories": up to 2 of: chicken, pork, beef, pasta, fish, rice, bread, pizza, dessert, sauce, salad, meze, veggie, eggs, drinks, other.`;
