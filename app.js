@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.18.1';
+const APP_VERSION = '1.19.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -502,8 +502,11 @@ function toCyr(s) {
   return out;
 }
 const toLat = s => [...s].map(ch => CYR[ch] ?? ch).join('');
+// Cyrillic spellings so an author can be found by typing it in Bulgarian
+const CHEF_ALIASES = { 'jamie oliver': 'джейми оливър джейми оливер' };
 function indexRecipe(r) {
   r._title = norm(r.title);
+  r._chef = norm([r.source, CHEF_ALIASES[norm(r.source)]].join(' '));
   r._ing = norm((r.ingredients || []).join(' '));
   r._rest = norm([r.steps, r.notes, r.source, ...(r.categories || []).flatMap(c => [CAT[c]?.bg, CAT[c]?.en]), COLL[r.collection]?.bg, COLL[r.collection]?.en].join(' '));
 }
@@ -513,6 +516,7 @@ function searchScore(r, terms) {
     let best = 0;
     for (const v of variants) {
       if (r._title.includes(v)) best = Math.max(best, r._title.startsWith(v) ? 14 : 10);
+      else if (r._chef.includes(v)) best = Math.max(best, 8);
       else if (r._ing.includes(v)) best = Math.max(best, 4);
       else if (r._rest.includes(v)) best = Math.max(best, 1);
     }
@@ -537,6 +541,7 @@ const state = {
   query: '',
   cat: null,
   coll: null,
+  chef: null,   // author filter ("Jamie Oliver")
   scope: 'all', // 'all' | 'mine' | 'shared' | 'top'
   favFilter: 'all', // Favorites tab: 'all' | 'fav' | 'cooked'
   pages: [],
@@ -797,6 +802,7 @@ function filtered() {
   else if (state.scope === 'top') { const top = new Set(topRecipes().map(r => r.id)); list = list.filter(r => top.has(r.id)); }
   if (state.cat) list = list.filter(r => (r.categories || []).includes(state.cat));
   if (state.coll) list = list.filter(r => r.collection === state.coll);
+  if (state.chef) list = list.filter(r => r.source === state.chef);
   const q = state.query.trim();
   if (q) {
     const terms = buildTerms(q);
@@ -812,7 +818,9 @@ function homeView() {
   state.recipes.forEach(r => (r.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
   const collCounts = {};
   state.recipes.forEach(r => { collCounts[r.collection] = (collCounts[r.collection] || 0) + 1; });
-  const filtering = state.query.trim() || state.cat || state.coll || state.scope !== 'all';
+  const chefCounts = {};
+  state.recipes.forEach(r => { if (r.source) chefCounts[r.source] = (chefCounts[r.source] || 0) + 1; });
+  const filtering = state.query.trim() || state.cat || state.coll || state.chef || state.scope !== 'all';
   const list = filtered();
   const mineCount = state.recipes.filter(isMine).length;
   const sharedCount = state.recipes.filter(r => r.sharedWithMe).length;
@@ -869,6 +877,7 @@ function homeView() {
       ${topCount ? `<button class="chip small ${state.scope === 'top' ? 'active' : ''}" data-scope="top">🏆 ${esc(t('top_title'))} <span class="count">${topCount}</span></button>` : ''}
       ${sharedCount ? `<button class="chip small ${state.scope === 'shared' ? 'active' : ''}" data-scope="shared">📥 ${esc(t('scope_shared'))} <span class="count">${sharedCount}</span></button>` : ''}
       ${COLLECTIONS.filter(c => collCounts[c.id]).map(c => `<button class="chip small ${state.coll === c.id ? 'active' : ''}" data-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${collCounts[c.id]}</span></button>`).join('')}
+      ${Object.keys(chefCounts).sort().map(n => `<button class="chip small ${state.chef === n ? 'active' : ''}" data-chef="${esc(n)}">👨‍🍳 ${esc(n)} <span class="count">${chefCounts[n]}</span></button>`).join('')}
     </div>
     <div class="chips">
       <button class="chip ${!state.cat ? 'active' : ''}" data-cat="">${esc(t('all'))} <span class="count">${state.recipes.length}</span></button>
@@ -889,6 +898,8 @@ function categoriesView() {
   state.recipes.forEach(r => (r.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
   const collCounts = {};
   state.recipes.forEach(r => { collCounts[r.collection] = (collCounts[r.collection] || 0) + 1; });
+  const chefCounts = {};
+  state.recipes.forEach(r => { if (r.source) chefCounts[r.source] = (chefCounts[r.source] || 0) + 1; });
   return `<section class="view">
     <div class="topbar"><div class="greeting">${esc(t('recipes_n', state.recipes.length))}</div></div>
     <h1 class="large-title">${esc(t('cat_title'))}</h1>
@@ -1117,7 +1128,7 @@ function detailHTML(r, tabSel = 'ing', serv = null) {
       <div class="meta-row">
         <span class="pill accent">${COLL[r.collection]?.emoji || ''} ${esc(collName(r.collection))}</span>
         ${r.cooked > 0 ? `<span class="pill ok">🍳 ${esc(t('cooked_n', r.cooked))}</span>` : r.tried ? `<span class="pill ok">✓ ${esc(t('tried'))}</span>` : ''}
-        ${r.source ? `<span class="pill">✍️ ${esc(r.source)}</span>` : ''}
+        ${r.source ? `<button class="pill pill-btn" data-chef="${esc(r.source)}">👨‍🍳 ${esc(r.source)}</button>` : ''}
         ${!r.seed && auth.mode !== 'local' ? `<span class="pill ${r.visibility === 'private' ? 'warn' : ''}">${esc(t(r.visibility === 'private' ? 'pill_private' : 'pill_public'))}</span>` : ''}
         ${r.sharedWithMe ? `<span class="pill accent">📥 ${esc(r.sharedBy ? t('shared_by', r.sharedBy) : t('shared_pill'))}</span>` : ''}
         ${r.ownerName && !isMine(r) ? (r.owner && ratingsOn() ? `<button class="pill pill-btn" data-user="${esc(r.owner)}" data-user-name="${esc(r.ownerName)}">👤 ${esc(t('by_author', r.ownerName))} ›</button>` : `<span class="pill">👤 ${esc(t('by_author', r.ownerName))}</span>`) : ''}
@@ -1711,7 +1722,7 @@ function openPasteImport(ai = false) {
     popPage();
     setTimeout(() => {
       openEditor(null, {
-        title: r.title, ingredients: r.ingredients, steps: r.steps, notes: r.notes,
+        title: r.title, ingredients: r.ingredients, steps: r.steps, notes: [r.notes, r.book ? 'Из книгата: ' + r.book : ''].filter(Boolean).join('\n'), source: r.author || null,
         categories: (r.categories || []).filter(c => CAT[c]), servings: r.servings, time: r.time, links: r.links,
       });
       toast(t('paste_done', r.stats.ingredients, r.stats.steps));
@@ -1777,7 +1788,8 @@ function openPasteImport(ai = false) {
       popPage();
       setTimeout(() => {
         openEditor(null, {
-          title: data.title, ingredients: data.ingredients, steps: data.steps.join('\n\n'), notes: data.notes,
+          title: data.title, ingredients: data.ingredients, steps: data.steps.join('\n\n'),
+          notes: [data.notes, data.book ? 'Из книгата: ' + data.book : ''].filter(Boolean).join('\n'), source: data.author || null,
           categories: (data.categories || []).filter(c => CAT[c]), servings: data.servings, time: data.time, links: [], images: refs,
         });
         toast(t('paste_done', data.ingredients.filter(x => !x.startsWith('## ')).length, data.steps.length));
@@ -1917,6 +1929,14 @@ function bindEvents() {
     if (catBtn) { state.cat = catBtn.dataset.cat || null; renderTab(); return; }
     const collBtn = e.target.closest('[data-coll]');
     if (collBtn) { state.coll = collBtn.dataset.coll || null; if (!state.coll) state.scope = 'all'; renderTab(); return; }
+    const chefBtn = e.target.closest('[data-chef]');
+    if (chefBtn) {   // author chip / pill: show that author's recipes (toggle off when already active)
+      const name = chefBtn.dataset.chef;
+      state.chef = state.chef === name && !state.pages.length ? null : name;
+      while (state.pages.length) popPage();
+      state.tab = 'home'; if (state.chef) { state.cat = null; state.coll = null; state.scope = 'all'; state.query = ''; }
+      renderTab(); window.scrollTo(0, 0); return;
+    }
     const favF = e.target.closest('[data-fav-filter]');
     if (favF) { state.favFilter = favF.dataset.favFilter; renderTab(); return; }
     const scopeBtn = e.target.closest('[data-scope]');
@@ -1983,7 +2003,7 @@ function bindEvents() {
       case 'roulette': openRoulette(); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
-      case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.scope = 'all'; renderTab(); break;
+      case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; renderTab(); break;
       case 'surprise': {
         const pool = filtered().length ? filtered() : state.recipes;
         openRecipe(pool[Math.floor(Math.random() * pool.length)].id); break;

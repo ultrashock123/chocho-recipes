@@ -194,8 +194,13 @@ function smartParseRecipe(raw) {
   const sv = text.match(/(?:за|serves?|порции:?)\s*(\d{1,2})\s*(?:порции|човека|души|persons?|servings?)?/i);
   let servings = sv && /порци|човека|души|serv|person/i.test(sv[0]) ? sv[1] : '';
   if (!servings) { const sv2 = head.map(l => l.match(/(?:^|[\s*•-])(\d{1,2})\s*порции(?![\p{L}])/iu)).find(Boolean); if (sv2) servings = sv2[1]; }   // "8 порции" in the page header
-  const tm = head.map(l => l.match(/^[\s*•-]*(\d{1,3})\s*мин\.?\s*$/i)).find(Boolean);                                        // "15 мин." in the page header
+  const tm = head.map(l => l.match(/^[\s*•-]*(\d{1,3})\s*(?:мин|mins?|minutes?)\.?\s*$/i)).find(Boolean);                                       // "15 мин." in the page header
   const time = tm ? `${tm[1]} мин` : '';
+  // author ("By Jamie Oliver") and book ("Recipe From" + next line) printed on the page
+  const byM = all.map(l => l.trim().match(/^[Bb]y\s+(\p{Lu}[\p{L}.'’-]*(?:\s+\p{Lu}[\p{L}.'’-]*){0,3})$/u)).find(Boolean);
+  const author = byM ? byM[1] : '';
+  const rfAt = all.findIndex(l => /^recipe\s+from\s*$/i.test(l.trim()));
+  const book = rfAt >= 0 ? (all.slice(rfAt + 1, rfAt + 4).map(l => l.trim()).find(l => l && !/^by\s/i.test(l)) || '') : '';
   const titleAndIng = (title + ' ' + ingLines.join(' '));
   const categories = SP_CATS.filter(([, re]) => re.test(titleAndIng)).map(c => c[0]).slice(0, 2);
   if (!servings) servings = '4';
@@ -222,7 +227,7 @@ function smartParseRecipe(raw) {
   const source = links.find(l => /^рецепт/i.test(l.label));
   return {
     title, ingredients: ing.list, steps: stepsList.join('\n\n'), notes: noteParts.join('\n').slice(0, 1500),
-    categories, servings, time, links: source ? [{ url: source.url, label: spHost(source.url) }] : [],
+    categories, servings, time, author, book, links: source ? [{ url: source.url, label: spHost(source.url) }] : [],
     stats: { ingredients: ing.list.filter(x => !x.startsWith('## ')).length, steps: stepsList.length, estimated: ing.estimated },
   };
 }

@@ -23,6 +23,8 @@ JSON fields:
 - "steps": array of strings, one per step, no numbering, copied or lightly tidied from the text.
 - "notes": 0-2 short sentences of useful intro or tips from the text, or "".
 - "servings": number of servings as a string, or "" if unknown.
+- "author": the chef or author of the recipe if the page names one (e.g. "By Jamie Oliver" gives "Jamie Oliver"; keep names of people as written, do not translate them), else "".
+- "book": the cookbook or series it comes from if stated (e.g. "Recipe From Jamie's 20-Minute Meals"), translated to Bulgarian only if it is a descriptive phrase; else "".
 - "time": total time like "45 мин" or "1 ч 30 мин", or "".
 - "categories": up to 2 of: chicken, pork, beef, pasta, fish, rice, bread, pizza, dessert, sauce, salad, meze, veggie, eggs, drinks, other.`;
 
@@ -81,6 +83,8 @@ Deno.serve(async req => {
       notes: String(rec.notes || ''),
       servings: String(rec.servings || ''),
       time: String(rec.time || ''),
+      author: String(rec.author || ''),
+      book: String(rec.book || ''),
       categories: Array.isArray(rec.categories) ? rec.categories.map(String).slice(0, 2) : [],
       left: unlimited ? null : Math.max(0, LIMIT - used - 1),
     });
