@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.21.1';
+const APP_VERSION = '1.21.2';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -1793,7 +1793,7 @@ function openPasteImport(ai = false) {
         if (!body && error && error.context && error.context.json) { try { body = await error.context.json(); } catch (e) {} }
         const e2 = new Error((body && body.error) || 'ai_failed');
         e2.status = body && body.status;   // the answer of the AI service, when it refused
-        e2.detail = body && body.detail;
+        e2.detail = (body && (body.detail || body.message)) || (error && error.context && error.context.status ? 'HTTP ' + error.context.status : (error && error.message) || '');
         throw e2;
       }
       aiBtn.textContent = t('paste_ai_saving');
@@ -1813,7 +1813,7 @@ function openPasteImport(ai = false) {
       aiBtn.disabled = false; aiBtn.textContent = label;
       const why = { 400: 'paste_ai_why_400', 401: 'paste_ai_why_401', 403: 'paste_ai_why_401', 404: 'paste_ai_why_404', 429: 'paste_ai_why_429', 529: 'paste_ai_why_529' }[err.status];
       toast(err.message === 'limit' ? t('paste_ai_limit') : err.message === 'not_configured' ? t('paste_ai_why_401') : err.message === 'fetch_failed' ? t('paste_ai_fetch') : err.message === 'no_recipe' ? t('paste_ai_norecipe')
-        : t('paste_ai_err') + (err.status ? ' (' + err.status + ')' : '') + (why ? ' ' + t(why) : '') + (err.detail ? ' [' + String(err.detail).slice(0, 140) + ']' : ''), 8000);
+        : t('paste_ai_err') + (err.status ? ' (' + err.status + ')' : '') + (why ? ' ' + t(why) : '') + (err.detail ? ' [' + String(err.detail).slice(0, 140) + ']' : (err.message && err.message !== 'ai_failed' ? ' [' + err.message + ']' : '')), 8000);
     }
   };
   setTimeout(() => box.focus(), 350);
