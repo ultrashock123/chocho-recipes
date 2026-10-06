@@ -15,7 +15,8 @@ const json = (body: unknown, status = 200) =>
 
 const SYSTEM = `You turn text copied from a web page, message or document into a clean recipe. Reply with ONE JSON object and nothing else.
 The source can be text and/or photos or screenshots of a recipe (read all the text in them, in order). It may contain page junk (menus, icons such as "book icon", dates, comment counts, share buttons, ads, related links, "bon appetit" lines). Ignore all of it.
-Never invent ingredients or steps that are not in the text. Keep the original language (usually Bulgarian).
+Never invent ingredients or steps that are not in the text.
+ALWAYS write the whole result in Bulgarian: if the source is in another language, translate the title, ingredients, steps and notes naturally into Bulgarian (cooking terms as Bulgarian cooks say them). Convert oz, lb, °F and fl oz to metric (гр, кг, мл, °C); cups and spoons can stay as ч.ч., с.л., ч.л.
 JSON fields:
 - "title": short recipe name, no emojis, no site name.
 - "ingredients": array of strings, one per ingredient, in the form "<quantity> <unit> <name>", e.g. "400 гр брашно", "2 с.л. зехтин", "1 бр. лук". Use only these units: гр, кг, мл, л, с.л., ч.л., ч.ч., бр., щипка, скилидки, връзка. Fractions like ½, ¼, 1½ are fine. Ranges like "2-3" are fine. If an amount is missing, estimate a typical amount for 4 servings. Names and amounts can be split across lines or glued together in the source: pair them up carefully. A sub-section title (e.g. "За соса") becomes an item "## За соса" placed before its ingredients.
@@ -60,7 +61,7 @@ Deno.serve(async req => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 2000, system: SYSTEM, messages: [{ role: 'user', content: [
+      body: JSON.stringify({ model: MODEL, max_tokens: 4000, system: SYSTEM, messages: [{ role: 'user', content: [
         ...images.map((i: { media_type: string; data: string }) => ({ type: 'image', source: { type: 'base64', media_type: i.media_type, data: i.data } })),
         { type: 'text', text: text || 'The recipe is in the image(s).' },
       ] }] }),

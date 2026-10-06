@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -115,7 +115,7 @@ const I18N = {
     paste_hint: 'Копирай рецептата от сайт, съобщение или документ и я постави тук — цялата, заедно със съставките и приготвянето. Приложението само ще ги подреди.',
     paste_ph: 'Необходими съставки:\n10 бр. сушени чушки\n1 чаена чаша булгур\n…\n\nРецептата:\n1. Заливате чушките с вряла вода…\n2. …',
     paste_free: 'Работи в телефона ти, безплатно и без интернет услуги. Накрая ще видиш готовата рецепта и ще можеш да поправиш каквото искаш, преди да я запазиш.',
-    paste_ai: '✨ Подреди с AI', paste_ai_working: 'AI подрежда рецептата…', paste_ai_err: 'AI не успя. Опитай пак или ползвай безплатното преработване.', paste_ai_limit: 'Изчерпа лимита си за AI рецепти. Ползвай „Постави текст“ — безплатно е и без лимит.', paste_ai_login: 'AI е само за влезли потребители.', paste_ai_hint: 'Постави цялата страница или съобщение с рецептата — AI сам ще вземе заглавието, продуктите и стъпките и ще махне излишното. Всеки има ограничен брой AI рецепти.', paste_ai_left: n => 'Остават ти ' + n + ' AI рецепти.', paste_ai_photos: 'Снимка или скрийншот (по желание)', paste_ai_photos_hint: 'До 3 снимки. На компютър можеш да поставиш скрийншот директно с Ctrl+V.', paste_ai_max: 'Най-много 3 снимки',
+    paste_ai: '✨ Подреди с AI', paste_ai_working: 'AI подрежда рецептата…', paste_ai_err: 'AI не успя. Опитай пак или ползвай безплатното преработване.', paste_ai_limit: 'Изчерпа лимита си за AI рецепти. Ползвай „Постави текст“ — безплатно е и без лимит.', paste_ai_login: 'AI е само за влезли потребители.', paste_ai_hint: 'Постави цялата страница или съобщение с рецептата — AI сам ще вземе заглавието, продуктите и стъпките и ще махне излишното. Всеки има ограничен брой AI рецепти.', paste_ai_left: n => 'Остават ти ' + n + ' AI рецепти.', paste_ai_photos: 'Снимка или скрийншот (по желание)', paste_ai_photos_hint: 'До 3 снимки, които се запазват и като снимки на рецептата. На компютър можеш да поставиш скрийншот директно с Ctrl+V.', paste_ai_max: 'Най-много 3 снимки', paste_ai_saving: 'Запазвам снимките…',
     paste_nothing: 'Не открих съставки или приготвяне. Опитай с по-пълен текст.', paste_clip_err: 'Не мога да чета клипборда — натисни и задръж в полето и избери „Постави“.',
     paste_done: (a, b) => `Готово: ${a} продукта, ${b} ${b === 1 ? 'стъпка' : 'стъпки'}. Прегледай и запази.`,
     invite_title: 'Покани приятели', invite_short: 'Покани', invite_intro: 'Изпрати лична връзка на приятелите си. Който се регистрира през нея, става твой приятел автоматично и можете веднага да си пишете.',
@@ -261,7 +261,7 @@ const I18N = {
     paste_hint: 'Copy a recipe from a website, message or document and paste it here — the whole thing, ingredients and method. The app will just tidy it up.',
     paste_ph: 'Ingredients:\n10 dried peppers\n1 cup bulgur\n…\n\nMethod:\n1. Pour boiling water over the peppers…\n2. …',
     paste_free: 'Runs on your phone, free, with no online service. You will see the finished recipe and can fix anything before saving.',
-    paste_ai: '✨ Tidy up with AI', paste_ai_working: 'AI is tidying the recipe…', paste_ai_err: 'AI failed. Try again or use the free conversion.', paste_ai_limit: 'You have used all your AI recipes. Use "Paste text" — it is free and unlimited.', paste_ai_login: 'AI is for signed-in users only.', paste_ai_hint: 'Paste a whole page or message with the recipe — AI picks the title, ingredients and steps and drops the junk. Everyone has a limited number of AI recipes.', paste_ai_left: n => 'You have ' + n + ' AI recipes left.', paste_ai_photos: 'Photo or screenshot (optional)', paste_ai_photos_hint: 'Up to 3 photos. On a computer you can paste a screenshot directly with Ctrl+V.', paste_ai_max: 'At most 3 photos',
+    paste_ai: '✨ Tidy up with AI', paste_ai_working: 'AI is tidying the recipe…', paste_ai_err: 'AI failed. Try again or use the free conversion.', paste_ai_limit: 'You have used all your AI recipes. Use "Paste text" — it is free and unlimited.', paste_ai_login: 'AI is for signed-in users only.', paste_ai_hint: 'Paste a whole page or message with the recipe — AI picks the title, ingredients and steps and drops the junk. Everyone has a limited number of AI recipes.', paste_ai_left: n => 'You have ' + n + ' AI recipes left.', paste_ai_photos: 'Photo or screenshot (optional)', paste_ai_photos_hint: 'Up to 3 photos, also kept as the recipe photos. On a computer you can paste a screenshot directly with Ctrl+V.', paste_ai_max: 'At most 3 photos', paste_ai_saving: 'Saving the photos…',
     paste_nothing: 'No ingredients or method found. Try with a fuller text.', paste_clip_err: 'Cannot read the clipboard — long-press in the box and choose “Paste”.',
     paste_done: (a, b) => `Done: ${a} ingredients, ${b} step${b === 1 ? '' : 's'}. Review and save.`,
     invite_title: 'Invite friends', invite_short: 'Invite', invite_intro: 'Send your personal link to friends. Whoever registers through it becomes your friend automatically and you can write to each other right away.',
@@ -1317,7 +1317,7 @@ function openEditor(existing, prefill = null) {
     links: [], tried: false, time: '', servings: '', visibility: 'public', basedOn: null,
     ...(prefill || {}),
   };
-  const added = [];      // photos stored during this edit session
+  const added = isNew && prefill && prefill.images ? [...prefill.images] : [];   // photos stored during this edit session (AI import uploads its photos up front)
   const removed = [];    // photos to delete on save
   let saved = false;
   const el = pushPage(editorHTML(d, isNew), {
@@ -1709,7 +1709,7 @@ function openPasteImport(ai = false) {
     if (images.length >= 3) { toast(t('paste_ai_max')); return; }
     try {
       const blob = await compressImage(file, 1568, 0.85);
-      images.push({ data: (await blobToDataURL(blob)).split(',')[1], url: URL.createObjectURL(blob) });
+      images.push({ data: (await blobToDataURL(blob)).split(',')[1], url: URL.createObjectURL(blob), blob });
       drawPhotos();
     } catch (err) { toast(t('photo_err')); }
   };
@@ -1752,11 +1752,14 @@ function openPasteImport(ai = false) {
         if (!code && error && error.context && error.context.json) { try { code = (await error.context.json()).error; } catch (e) {} }
         throw new Error(code || 'ai_failed');
       }
+      aiBtn.textContent = t('paste_ai_saving');
+      const refs = [];   // the photos the recipe came from are kept as the recipe's photos
+      for (const im of images) { try { refs.push(await storePhoto(im.blob, 1600)); } catch (err) { /* the recipe is still created */ } }
       popPage();
       setTimeout(() => {
         openEditor(null, {
           title: data.title, ingredients: data.ingredients, steps: data.steps.join('\n\n'), notes: data.notes,
-          categories: (data.categories || []).filter(c => CAT[c]), servings: data.servings, time: data.time, links: [],
+          categories: (data.categories || []).filter(c => CAT[c]), servings: data.servings, time: data.time, links: [], images: refs,
         });
         toast(t('paste_done', data.ingredients.filter(x => !x.startsWith('## ')).length, data.steps.length));
       }, 280);
