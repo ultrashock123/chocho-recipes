@@ -1,6 +1,6 @@
 /* Offline support: app shell is precached, recipe photos are cached on first use
    and warmed in the background after install. */
-const VERSION = 'v1.22.3';
+const VERSION = 'v1.23.0';
 const SHELL = `shell-${VERSION}`;
 const IMAGES = 'images-v1';
 const SHELL_FILES = ['./', 'index.html', 'styles.css', 'app.js', 'cloud.js', 'smartparse.js', 'brew.js', 'chat.js', 'invite.js', 'admin.js', 'config.js', 'recipes.json', 'beer-recipes.txt', 'brewui.js', 'manifest.webmanifest',

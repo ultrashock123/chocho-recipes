@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.22.3';
+const APP_VERSION = '1.23.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -46,7 +46,7 @@ const I18N = {
     no_results: 'Нищо не намерих', no_results_sub: 'Опитай с друга дума или махни филтрите.',
     clear_filters: 'Изчисти филтрите', see_all: 'Виж всички',
     fav_title: 'Любими', fav_empty: 'Още нямаш любими', fav_empty_sub: 'Натисни ♥ на рецепта, за да я запазиш тук.',
-    cat_title: 'Категории', collections: 'Колекции',
+    cat_title: 'Категории', collections: 'Колекции', start_mode: 'Ползвам приложението най-вече за', start_mode_hint: 'Така се отваря приложението всеки път. Можеш да превключваш по всяко време отгоре.', mode_cook: '🍳 Готвене', mode_brew: '🍺 Варене',
     ingredients: 'Продукти', method: 'Приготвяне', notes: 'Бележки', links: 'Линкове и видео',
     no_ingredients: 'Продуктите са описани в приготвянето.', no_method: 'Няма описание — виж снимките и линковете.',
     tried: 'Изпробвана', not_tried: 'Не е пробвана', cook: 'Готвене', share: 'Сподели', edit: 'Редактирай',
@@ -193,7 +193,7 @@ const I18N = {
     no_results: 'Nothing found', no_results_sub: 'Try another word or clear the filters.',
     clear_filters: 'Clear filters', see_all: 'See all',
     fav_title: 'Favorites', fav_empty: 'No favorites yet', fav_empty_sub: 'Tap ♥ on a recipe to keep it here.',
-    cat_title: 'Categories', collections: 'Collections',
+    cat_title: 'Categories', collections: 'Collections', start_mode: 'I mainly use the app for', start_mode_hint: 'This is what opens each time. You can switch at any time at the top.', mode_cook: '🍳 Cooking', mode_brew: '🍺 Brewing',
     ingredients: 'Ingredients', method: 'Method', notes: 'Notes', links: 'Links & video',
     no_ingredients: 'Ingredients are described in the method.', no_method: 'No description — see photos and links.',
     tried: 'Tried', not_tried: 'Not tried', cook: 'Cook', share: 'Share', edit: 'Edit',
@@ -370,7 +370,7 @@ function toast(msg, ms = 2200) {
 
 /* ---------------- Settings ---------------- */
 const settings = Object.assign(
-  { theme: 'auto', scale: 1, lang: 'bg', name: '', avatar: null, sort: 'az', aiCode: '', mode: 'cook' },
+  { theme: 'auto', scale: 1, lang: 'bg', name: '', avatar: null, sort: 'az', aiCode: '', mode: 'cook', startMode: 'cook' },
   (() => { try { return JSON.parse(localStorage.getItem('chocho.settings') || '{}'); } catch (e) { return {}; } })()
 );
 function saveSettings() { try { localStorage.setItem('chocho.settings', JSON.stringify(settings)); } catch (e) {} }
@@ -1003,6 +1003,10 @@ function settingsView() {
           <span class="a-big">A</span></div>
       </div>
     </div>
+
+    <div class="group-label">${esc(t('start_mode'))}</div>
+    <div class="group"><div class="seg-row">${seg('startMode', [['cook', t('mode_cook')], ['brew', t('mode_brew')]])}</div></div>
+    <p class="hint">${esc(t('start_mode_hint'))}</p>
 
     <div class="group-label">${esc(t('language'))}</div>
     <div class="group"><div class="seg-row">${seg('lang', [['bg', '🇧🇬 Български'], ['en', '🇬🇧 English']])}</div></div>
@@ -2047,7 +2051,9 @@ function bindEvents() {
 
     const setBtn = e.target.closest('[data-set]');
     if (setBtn) {
-      settings[setBtn.dataset.set] = setBtn.dataset.val; saveSettings(); applyAppearance(); renderTab(); return;
+      settings[setBtn.dataset.set] = setBtn.dataset.val; saveSettings(); applyAppearance();
+      if (setBtn.dataset.set === 'startMode') { settings.mode = setBtn.dataset.val; applyMode(); state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; state.query = ''; compose(); }   // switch right away too
+      renderTab(); return;
     }
 
     const dtab = e.target.closest('[data-dtab]');
@@ -2677,6 +2683,7 @@ async function promptLogin() {
 
 /* ---------------- Boot ---------------- */
 (async function boot() {
+  settings.mode = settings.startMode === 'brew' ? 'brew' : 'cook';   // the app opens in the mode the person chose in Settings
   applyAppearance(); applyMode();
   bindEvents();
   captureInviteFromUrl();
