@@ -129,7 +129,7 @@ function spIngredientLines(lines, servings) {
 /* ---------- categories ---------- */
 const SP_CATS = [
   ['pizza', /пица/i], ['pasta', /паста|спагет|макарон|лазаня|тестени/i], ['chicken', /пиле|пилеш|кокошк/i], ['pork', /свинск|свинс/i], ['beef', /телешк|говежд|кайма/i],
-  ['fish', /риба|сьомга|скумрия|морск|скарид/i], ['rice', /ориз|булгур|ризото|кускус/i], ['bread', /хляб|тесто|питка|кифл|погача|мекиц/i], ['dessert', /торта|сладкиш|десерт|крем|кекс|бисквит|палачинк|мус\b/i],
+  ['fish', /риба|сьомга|скумрия|морск|скарид/i], ['rice', /ориз|булгур|ризото|кускус/i], ['bread', /хляб|тесто|питка|пърленк|кифл|погача|мекиц|тестен/i], ['dessert', /торта|сладкиш|десерт|крем|кекс|бисквит|палачинк|мус\b/i],
   ['salad', /салата/i], ['sauce', /сос\b|дресинг|мариновка/i], ['meze', /разядка|мезе|хумус|дип|намаз/i], ['veggie', /чушк|зеленчук|тиквичк|патладжан|боб|леща|гъби|картоф/i],
   ['eggs', /яйц|омлет|бъркани/i], ['drinks', /напитка|коктейл|смути|кафе|чай\b|лимонада/i],
 ];
@@ -193,6 +193,9 @@ function smartParseRecipe(raw) {
   // 3) servings (from the text if present, else a sensible default)
   const sv = text.match(/(?:за|serves?|порции:?)\s*(\d{1,2})\s*(?:порции|човека|души|persons?|servings?)?/i);
   let servings = sv && /порци|човека|души|serv|person/i.test(sv[0]) ? sv[1] : '';
+  if (!servings) { const sv2 = head.map(l => l.match(/(?:^|[\s*•-])(\d{1,2})\s*порции(?![\p{L}])/iu)).find(Boolean); if (sv2) servings = sv2[1]; }   // "8 порции" in the page header
+  const tm = head.map(l => l.match(/^[\s*•-]*(\d{1,3})\s*мин\.?\s*$/i)).find(Boolean);                                        // "15 мин." in the page header
+  const time = tm ? `${tm[1]} мин` : '';
   const titleAndIng = (title + ' ' + ingLines.join(' '));
   const categories = SP_CATS.filter(([, re]) => re.test(titleAndIng)).map(c => c[0]).slice(0, 2);
   if (!servings) servings = '4';
@@ -208,7 +211,7 @@ function smartParseRecipe(raw) {
     const t = l.trim(), m = t.match(numRe);
     if (m) { seen = true; if (cur !== null) numbered.push(cur); cur = m[2]; continue; }
     if (!t) { if (cur !== null) { (seen ? numbered : pre).push(cur); cur = null; } continue; }   // a blank line ends a paragraph / step
-    if (closing.test(t)) continue;                                                              // "Рецептата за … е изпълнена!"
+    if (closing.test(t)) break;                                                                  // "Рецептата за … е изпълнена!" — everything after it is page footer
     cur = cur !== null ? cur + ' ' + t : t;
   }
   if (cur !== null) (seen ? numbered : pre).push(cur);
@@ -219,7 +222,7 @@ function smartParseRecipe(raw) {
   const source = links.find(l => /^рецепт/i.test(l.label));
   return {
     title, ingredients: ing.list, steps: stepsList.join('\n\n'), notes: noteParts.join('\n').slice(0, 1500),
-    categories, servings, links: source ? [{ url: source.url, label: spHost(source.url) }] : [],
+    categories, servings, time, links: source ? [{ url: source.url, label: spHost(source.url) }] : [],
     stats: { ingredients: ing.list.filter(x => !x.startsWith('## ')).length, steps: stepsList.length, estimated: ing.estimated },
   };
 }

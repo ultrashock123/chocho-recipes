@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.14.1';
+const APP_VERSION = '1.14.2';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -1680,7 +1680,7 @@ function openPasteImport() {
     setTimeout(() => {
       openEditor(null, {
         title: r.title, ingredients: r.ingredients, steps: r.steps, notes: r.notes,
-        categories: (r.categories || []).filter(c => CAT[c]), servings: r.servings, links: r.links,
+        categories: (r.categories || []).filter(c => CAT[c]), servings: r.servings, time: r.time, links: r.links,
       });
       toast(t('paste_done', r.stats.ingredients, r.stats.steps));
     }, 280);
