@@ -1,10 +1,10 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.21.4';
+const APP_VERSION = '1.22.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
-const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
+const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
 
 /* ---------------- Static data ---------------- */
 const CATEGORIES = [
@@ -25,7 +25,7 @@ const CATEGORIES = [
   { id: 'drinks', emoji: '☕', h: 25, bg: 'Напитки', en: 'Drinks' },
   { id: 'other', emoji: '🍽️', h: 260, bg: 'Други', en: 'Other' },
 ];
-const CAT = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+const CAT = Object.fromEntries([...CATEGORIES, ...BEER_STYLES].map(c => [c.id, c]));   // food categories + beer styles
 
 const COLLECTIONS = [
   { id: 'chef', emoji: '👨‍🍳', bg: 'Подбрани', en: "Chef's picks" },
@@ -370,11 +370,11 @@ function toast(msg, ms = 2200) {
 
 /* ---------------- Settings ---------------- */
 const settings = Object.assign(
-  { theme: 'auto', scale: 1, lang: 'bg', name: '', avatar: null, sort: 'az', aiCode: '' },
+  { theme: 'auto', scale: 1, lang: 'bg', name: '', avatar: null, sort: 'az', aiCode: '', mode: 'cook' },
   (() => { try { return JSON.parse(localStorage.getItem('chocho.settings') || '{}'); } catch (e) { return {}; } })()
 );
 function saveSettings() { try { localStorage.setItem('chocho.settings', JSON.stringify(settings)); } catch (e) {} }
-const t = (k, ...a) => { const v = I18N[settings.lang][k] ?? I18N.bg[k] ?? k; return typeof v === 'function' ? v(...a) : v; };
+const t = (k, ...a) => { const o = settings.mode === 'brew' ? (BREW_T[settings.lang] || {})[k] : undefined; const v = o ?? I18N[settings.lang][k] ?? I18N.bg[k] ?? k; return typeof v === 'function' ? v(...a) : v; };
 const catName = id => (CAT[id] || CAT.other)[settings.lang];
 const collName = id => (COLL[id] || COLL.mine)[settings.lang];
 
@@ -510,7 +510,7 @@ function indexRecipe(r) {
   r._title = norm(r.title);
   r._chef = norm([r.source, CHEF_ALIASES[norm(r.source)]].join(' '));
   r._ing = norm((r.ingredients || []).join(' '));
-  r._rest = norm([r.steps, r.notes, r.source, ...(r.categories || []).flatMap(c => [CAT[c]?.bg, CAT[c]?.en]), COLL[r.collection]?.bg, COLL[r.collection]?.en].join(' '));
+  r._rest = norm([r.steps, r.notes, r.source, r.beer && r.beer.styleName, r.beer && r.beer.yeast && r.beer.yeast.name, ...(r.categories || []).flatMap(c => [CAT[c]?.bg, CAT[c]?.en]), COLL[r.collection]?.bg, COLL[r.collection]?.en].join(' '));
 }
 function searchScore(r, terms) {
   let score = 0;
@@ -548,7 +548,7 @@ const state = {
   favFilter: 'all', // Favorites tab: 'all' | 'fav' | 'cooked'
   pages: [],
 };
-const byId = id => state.recipes.find(r => r.id === id);
+const byId = id => (state.all || state.recipes).find(r => r.id === id);
 
 let seeds = [];   // the original recipes from recipes.json: public and read-only
 let custom = [];  // recipes made by people: own ones (+ other people's public ones when the cloud is on)
@@ -580,6 +580,13 @@ async function loadData() {
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   const raw = await fetch('recipes.json').then(r => r.json());
   seeds = raw.map((r, i) => normalizeSeed(r, 1.7e12 + i * 1000));
+  try {   // the brewing recipes (exports from Brewer's Friend, separated by a line with =====)
+    const txt = await fetch('beer-recipes.txt').then(x => (x.ok ? x.text() : ''));
+    txt.split(/\n=====\n/).forEach((p, i) => {
+      const b = parseBrewRecipe(p);
+      if (b) seeds.push(normalizeSeed(Object.assign(b, { id: 'brew-' + String(i + 1).padStart(3, '0'), source: b.source || 'RifayBrew', tried: true, collection: 'chef' }), 1.7e12 + (500 + i) * 1000));
+    });
+  } catch (e) { /* the cooking recipes still work */ }
   await migrateLegacy();
   await loadUserData();
 }
@@ -647,7 +654,8 @@ function compose() {
     indexRecipe(r);
     visible.push(r);
   });
-  state.recipes = visible;
+  state.all = visible;
+  state.recipes = visible.filter(r => isBeer(r) === brewMode());
 }
 function normalizeSeed(r, created) {
   return {
@@ -655,7 +663,7 @@ function normalizeSeed(r, created) {
     source: r.source || null, seedTried: r.tried === true, ingredients: r.ingredients || [], steps: r.steps || '',
     notes: r.notes || '', links: r.links || [], images: r.images || [], favorite: false, tried: r.tried === true,
     time: r.time || '', servings: r.servings || '', createdAt: created, updatedAt: created, seed: true,
-    owner: null, ownerName: SITE_AUTHOR, visibility: 'public',
+    owner: null, ownerName: SITE_AUTHOR, visibility: 'public', kind: r.kind || undefined, beer: r.beer || undefined,
   };
 }
 // v1.2 kept everything (originals, favorites, edits) in one IndexedDB store. Split it: favorites/tried become
@@ -763,7 +771,7 @@ function card(r) {
     </div>
     <div class="card-body">
       <div class="card-title">${esc(r.title)}</div>
-      <div class="card-meta">${(statOf('recipe', r.id) || {}).count ? `<span class="mini-score">${fmtScore(statOf('recipe', r.id).avg)}</span>` : ''}${c.emoji} ${esc(catName(c.id))} · ${esc(collName(r.collection))}</div>
+      <div class="card-meta">${(statOf('recipe', r.id) || {}).count ? `<span class="mini-score">${fmtScore(statOf('recipe', r.id).avg)}</span>` : ''}${c.emoji} ${esc(catName(c.id))} · ${isBeer(r) ? esc(beerCardMeta(r)) : esc(collName(r.collection))}</div>
       ${!r.seed && r.ownerName && !isMine(r) ? `<div class="card-author">👤 ${esc(r.ownerName)}</div>` : ''}
     </div>
   </button>`;
@@ -861,6 +869,7 @@ function homeView() {
         ? `<button class="btn-login" data-action="login">${esc(t('login'))}</button>`
         : `<button data-tab-go="settings" aria-label="Profile">${avatarHTML()}</button>`}
     </div>
+    <div class="mode-row">${modeSwitchHTML()}</div>
     <div class="hero-row">
       <div class="hero-text">
         <div class="greeting">${esc(greeting())} 👋</div>
@@ -885,12 +894,12 @@ function homeView() {
       ${auth.mode !== 'guest' ? `<button class="chip small ${state.scope === 'mine' ? 'active' : ''}" data-scope="mine">👤 ${esc(t('scope_mine'))} <span class="count">${mineCount}</span></button>` : ''}
       ${topCount ? `<button class="chip small ${state.scope === 'top' ? 'active' : ''}" data-scope="top">🏆 ${esc(t('top_title'))} <span class="count">${topCount}</span></button>` : ''}
       ${sharedCount ? `<button class="chip small ${state.scope === 'shared' ? 'active' : ''}" data-scope="shared">📥 ${esc(t('scope_shared'))} <span class="count">${sharedCount}</span></button>` : ''}
-      ${COLLECTIONS.filter(c => collCounts[c.id]).map(c => `<button class="chip small ${state.coll === c.id ? 'active' : ''}" data-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${collCounts[c.id]}</span></button>`).join('')}
+      ${(brewMode() ? [] : COLLECTIONS).filter(c => collCounts[c.id]).map(c => `<button class="chip small ${state.coll === c.id ? 'active' : ''}" data-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${collCounts[c.id]}</span></button>`).join('')}
       ${Object.keys(chefCounts).sort().map(n => `<button class="chip small ${state.chef === n ? 'active' : ''}" data-chef="${esc(n)}">👨‍🍳 ${esc(n)} <span class="count">${chefCounts[n]}</span></button>`).join('')}
     </div>
     <div class="chips">
       <button class="chip ${!state.cat ? 'active' : ''}" data-cat="">${esc(t('all'))} <span class="count">${state.recipes.length}</span></button>
-      ${CATEGORIES.filter(c => counts[c.id]).map(c => `<button class="chip ${state.cat === c.id ? 'active' : ''}" data-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${counts[c.id]}</span></button>`).join('')}
+      ${curCats().filter(c => counts[c.id]).map(c => `<button class="chip ${state.cat === c.id ? 'active' : ''}" data-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])} <span class="count">${counts[c.id]}</span></button>`).join('')}
     </div>
     <div id="home-results">${body}</div>
   </section>`;
@@ -911,9 +920,10 @@ function categoriesView() {
   state.recipes.forEach(r => { if (r.source) chefCounts[r.source] = (chefCounts[r.source] || 0) + 1; });
   return `<section class="view">
     <div class="topbar"><div class="greeting">${esc(t('recipes_n', state.recipes.length))}</div></div>
+    <div class="mode-row">${modeSwitchHTML()}</div>
     <h1 class="large-title">${esc(t('cat_title'))}</h1>
     <div class="tiles">
-      ${CATEGORIES.filter(c => counts[c.id]).map(c => `<button class="tile" style="--h:${c.h}" data-go-cat="${c.id}">
+      ${curCats().filter(c => counts[c.id]).map(c => `<button class="tile" style="--h:${c.h}" data-go-cat="${c.id}">
         <b>${esc(c[settings.lang])}</b><span>${esc(t('recipes_n', counts[c.id]))}</span><div class="emo">${c.emoji}</div></button>`).join('')}
     </div>
     <div class="section-head"><h2>${esc(t('collections'))}</h2></div>
@@ -924,7 +934,7 @@ function categoriesView() {
         <b>${esc(t('top_title'))}</b><span>${esc(t('recipes_n', topRecipes().length))}</span><div class="emo">🏆</div></button>` : ''}
       ${state.recipes.some(r => r.sharedWithMe) ? `<button class="tile" style="--h:210" data-go-scope="shared">
         <b>${esc(t('scope_shared'))}</b><span>${esc(t('recipes_n', state.recipes.filter(r => r.sharedWithMe).length))}</span><div class="emo">📥</div></button>` : ''}
-      ${COLLECTIONS.filter(c => collCounts[c.id]).map((c, i) => `<button class="tile" style="--h:${[20, 280, 38, 160][i]}" data-go-coll="${c.id}">
+      ${(brewMode() ? [] : COLLECTIONS).filter(c => collCounts[c.id]).map((c, i) => `<button class="tile" style="--h:${[20, 280, 38, 160][i]}" data-go-coll="${c.id}">
         <b>${esc(c[settings.lang])}</b><span>${esc(t('recipes_n', collCounts[c.id]))}</span><div class="emo">${c.emoji}</div></button>`).join('')}
     </div>
   </section>`;
@@ -938,6 +948,7 @@ function favoritesView() {
   const chip = (id, label, n) => `<button class="chip small ${f === id ? 'active' : ''}" data-fav-filter="${id}">${label} <span class="count">${n}</span></button>`;
   return `<section class="view">
     <div class="topbar"><div class="greeting">${esc(t('recipes_n', list.length))}</div></div>
+    <div class="mode-row">${modeSwitchHTML()}</div>
     <h1 class="large-title">${esc(t('fav_title'))} ❤️</h1>
     <div class="chips seg">${chip('all', esc(t('all')), all.length)}${chip('fav', '❤️ ' + esc(t('fav_only')), favs.length)}${chip('cooked', '🍳 ' + esc(t('fav_cooked')), cooked.length)}</div>
     ${list.length ? `<div class="grid">${list.map(card).join('')}</div>` :
@@ -1094,6 +1105,7 @@ function cookBarHTML() {
 }
 
 function detailHTML(r, tabSel = 'ing', serv = null) {
+  if (isBeer(r)) return beerDetailHTML(r, tabSel, serv);
   const imgs = r.images || [];
   const cats = (r.categories || []).map(c => `<span class="pill">${CAT[c]?.emoji || ''} ${esc(catName(c))}</span>`).join('');
   const hasIng = (r.ingredients || []).length > 0;
@@ -1245,6 +1257,7 @@ function bindGallery(el) {
 }
 
 function recipeText(r) {
+  if (isBeer(r)) return beerText(r);
   return [r.title, '', (r.ingredients || []).length ? t('ingredients') + ':\n' + r.ingredients.map(x => x.startsWith('## ') ? '\n' + x.slice(3) + ':' : '• ' + x).join('\n') : '',
     '', r.steps ? t('method') + ':\n' + r.steps : '', r.notes ? '\n' + r.notes : '',
     (r.links || []).map(l => l.url).join('\n')].filter(x => x !== undefined).join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -1281,29 +1294,29 @@ function editorHTML(d, isNew) {
 
       <div class="group-label">${esc(t('f_categories'))}</div>
       <div class="group"><div class="chip-pick" id="e-cats">
-        ${CATEGORIES.map(c => `<button class="chip small ${d.categories.includes(c.id) ? 'active' : ''}" data-pick-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])}</button>`).join('')}
+        ${(d.kind === 'beer' ? BEER_STYLES : CATEGORIES).map(c => `<button class="chip small ${d.categories.includes(c.id) ? 'active' : ''}" data-pick-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])}</button>`).join('')}
       </div></div>
 
-      <div class="group-label">${esc(t('f_collection'))}</div>
+      ${d.kind === 'beer' ? '' : `<div class="group-label">${esc(t('f_collection'))}</div>
       <div class="group"><div class="chip-pick" id="e-coll">
         ${COLLECTIONS.map(c => `<button class="chip small ${d.collection === c.id ? 'active' : ''}" data-pick-coll="${c.id}">${c.emoji} ${esc(c[settings.lang])}</button>`).join('')}
-      </div></div>
+      </div></div>`}
 
       <div class="group" style="margin-top:18px">
         <input class="field" id="e-author" list="e-authors" placeholder="👨‍🍳 ${esc(t('f_author_ph'))}" value="${esc(d.source || '')}" maxlength="60" style="margin-bottom:8px">
-        <datalist id="e-authors">${[...new Set(state.recipes.map(x => x.source).filter(Boolean))].sort().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-        <div class="inline-fields">
+        <datalist id="e-authors">${[...new Set(state.all.map(x => x.source).filter(Boolean))].sort().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        ${d.kind === 'beer' ? '' : `<div class="inline-fields">
           <input class="field" id="e-time" placeholder="⏱ ${esc(t('f_time_ph'))}" value="${esc(d.time)}">
           <input class="field" id="e-servings" placeholder="🍽 ${esc(t('f_servings_ph'))}" value="${esc(d.servings)}">
-        </div>
-        <label class="row"><span class="lbl">✓ ${esc(t('f_tried'))}</span><span class="switch"><input type="checkbox" id="e-tried" ${d.tried ? 'checked' : ''}><span></span></span></label>
+        </div>`}
+        <label class="row"><span class="lbl">✓ ${esc(d.kind === 'beer' ? 'Сварявана от мен' : t('f_tried'))}</span><span class="switch"><input type="checkbox" id="e-tried" ${d.tried ? 'checked' : ''}><span></span></span></label>
       </div>
 
-      <div class="group-label">${esc(t('f_ingredients'))}</div>
+      ${d.kind === 'beer' ? beerEditorHTML(d) : `<div class="group-label">${esc(t('f_ingredients'))}</div>
       <div class="group"><textarea class="field" id="e-ing" rows="8" placeholder="${esc(t('f_ing_ph'))}">${esc(d.ingredients.join('\n'))}</textarea></div>
 
       <div class="group-label">${esc(t('f_steps'))}</div>
-      <div class="group"><textarea class="field" id="e-steps" rows="10" placeholder="${esc(t('f_steps_ph'))}">${esc(d.steps)}</textarea></div>
+      <div class="group"><textarea class="field" id="e-steps" rows="10" placeholder="${esc(t('f_steps_ph'))}">${esc(d.steps)}</textarea></div>`}
 
       <div class="group-label">${esc(t('f_notes'))}</div>
       <div class="group"><textarea class="field" id="e-notes" rows="4" placeholder="${esc(t('f_notes_ph'))}">${esc(d.notes)}</textarea></div>
@@ -1336,11 +1349,14 @@ function openEditor(existing, prefill = null) {
     ingredients: existing.ingredients || [], steps: existing.steps || '', notes: existing.notes || '', links: existing.links || [],
     tried: !!existing.tried, time: existing.time || '', servings: existing.servings || '', source: existing.source || '',
     visibility: existing.visibility || 'public', basedOn: existing.basedOn || null,
+    kind: existing.kind || undefined, beer: existing.beer || undefined,
   })) : {
     title: '', images: [], categories: state.cat ? [state.cat] : [], collection: 'mine', ingredients: [], steps: '', notes: '',
     links: [], tried: false, time: '', servings: '', source: '', visibility: 'public', basedOn: null,
     ...(prefill || {}),
   };
+  if (d.kind === 'beer' && !d.beer) d.beer = { method: 'all-grain', batchL: 20, boilL: 25, boilMin: 60, eff: 72, fermentables: [bBlank('ferm')], hops: [], others: [], mash: [bBlank('mash')], yeast: null };
+  if (d.kind === 'beer' && isNew && !prefill?.categories && state.cat && !String(state.cat).startsWith('b-')) d.categories = [];
   const added = isNew && prefill && prefill.images ? [...prefill.images] : [];   // photos stored during this edit session (AI import uploads its photos up front)
   const removed = [];    // photos to delete on save
   let saved = false;
@@ -1351,11 +1367,14 @@ function openEditor(existing, prefill = null) {
 
   const readForm = () => {
     d.title = $('#e-title', el).value.trim();
-    d.ingredients = $('#e-ing', el).value.split('\n').map(s => s.trim()).filter(Boolean);
-    d.steps = $('#e-steps', el).value.trim();
+    if (d.kind === 'beer') readBeerForm(el, d);
+    else {
+      d.ingredients = $('#e-ing', el).value.split('\n').map(s => s.trim()).filter(Boolean);
+      d.steps = $('#e-steps', el).value.trim();
+      d.time = $('#e-time', el).value.trim();
+      d.servings = $('#e-servings', el).value.trim();
+    }
     d.notes = $('#e-notes', el).value.trim();
-    d.time = $('#e-time', el).value.trim();
-    d.servings = $('#e-servings', el).value.trim();
     d.source = $('#e-author', el).value.trim() || null;
     d.tried = $('#e-tried', el).checked;
     d.links = [...el.querySelectorAll('[data-link-url]')].map((inp, i) => {
@@ -1383,6 +1402,17 @@ function openEditor(existing, prefill = null) {
     addPhotoFiles(files);
   });
 
+  if (d.kind === 'beer') {   // rows of the brewing form: add / remove, live numbers, autofill from the ingredient lists
+    const live = () => renderBeerLive(el, d);
+    setTimeout(live, 50);
+    el.addEventListener('input', e => { if (e.target.closest('.bf')) { d._beerDirty = true; clearTimeout(live._t); live._t = setTimeout(live, 120); } });
+    el.addEventListener('change', e => { if (e.target.closest('.bf')) { d._beerDirty = true; beerAutofill(e.target, el); live(); } });
+    el.addEventListener('click', e => {
+      const add = e.target.closest('[data-b-add]'), rm = e.target.closest('[data-b-rm]');
+      if (add) { d._beerDirty = true; add.insertAdjacentHTML('beforebegin', bRowHTML(add.dataset.bAdd, d)); add.previousElementSibling.querySelector('input')?.focus(); live(); }
+      if (rm) { d._beerDirty = true; rm.closest('.brow').remove(); live(); }
+    });
+  }
   el.addEventListener('click', async e => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -1390,7 +1420,12 @@ function openEditor(existing, prefill = null) {
     if (b.dataset.action === 'editor-save') {
       readForm();
       if (!d.title) { toast(t('need_title')); $('#e-title', el).focus(); return; }
-      if (!d.categories.length) d.categories = ['other'];
+      if (d.kind === 'beer') {
+        if (!d.categories.length) d.categories = beerCategories(d.beer.styleName, d.title, d.beer.yeast && d.beer.yeast.name);
+        d.ingredients = beerIngredientLines(d.beer);
+        if (d._beerDirty || !d.beer.stats) delete d.beer.stats;   // an edited recipe shows calculated numbers again
+        delete d._beerDirty;
+      } else if (!d.categories.length) d.categories = ['other'];
       const r = existing || { id: uid('r'), createdAt: Date.now(), favorite: false, source: null, seed: false,
         owner: auth.mode === 'user' ? auth.user.id : null, ownerName: myName() };
       const wasTried = existing ? !!existing.tried : false;
@@ -1516,7 +1551,7 @@ function openRoulette() {
       <div class="group-label">${esc(t('roulette_pool'))}</div>
       <div class="chips" id="rl-cats">
         <button class="chip small ${!poolCat ? 'active' : ''}" data-rl-cat="">${esc(t('all'))}</button>
-        ${CATEGORIES.filter(c => counts[c.id] >= 2).map(c => `<button class="chip small ${poolCat === c.id ? 'active' : ''}" data-rl-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])}</button>`).join('')}
+        ${curCats().filter(c => counts[c.id] >= 2).map(c => `<button class="chip small ${poolCat === c.id ? 'active' : ''}" data-rl-cat="${c.id}">${c.emoji} ${esc(c[settings.lang])}</button>`).join('')}
       </div>
       <div class="wheel-wrap">
         <div class="wheel-pointer"></div>
@@ -1613,14 +1648,23 @@ function confettiHTML() {
 /* ---------------- AI recipe input ---------------- */
 const AI_ERRORS = { bad_access_code: 'ai_bad_code', not_configured: 'ai_not_configured' };
 async function askAddMode() {
+  const brew = brewMode();
   const v = await actionSheet(t('add_how'), [
-    { label: t('add_manual'), value: 'manual' },
+    { label: brew ? '🍺 Нова бира — ръчно' : t('add_manual'), value: 'manual' },
     { label: t('add_ai'), value: 'ai' },
-    { label: t('add_paste'), value: 'paste' },
+    { label: brew ? '📋 Постави рецепта (от Brewer\'s Friend — безплатно)' : t('add_paste'), value: 'paste' },
   ]);
   if (v === 'paste') openPasteImport(false);
   else if (v === 'ai') { if (auth.mode === 'user') openPasteImport(true); else { toast(t('paste_ai_login')); promptLogin(); } }
-  else if (v === 'manual') openEditor(null);
+  else if (v === 'manual') openEditor(null, brew ? { kind: 'beer', categories: state.cat && String(state.cat).startsWith('b-') ? [state.cat] : [] } : null);
+}
+// A recipe exported from Brewer's Friend is understood locally, for free, whichever way it was pasted.
+function openBeerFromText(text) {
+  const b = parseBrewRecipe(text);
+  if (!b) return false;
+  popPage();
+  setTimeout(() => { openEditor(null, b); toast(`Готово: ${(b.beer.fermentables || []).length} малца, ${(b.beer.hops || []).length} хмела. Прегледай и запази.`, 3500); }, 280);
+  return true;
 }
 
 function openAIComposer(withPhoto) {
@@ -1730,6 +1774,7 @@ function openPasteImport(ai = false) {
   if (goBtn) goBtn.onclick = () => {
     const text = box.value.trim();
     if (!text) { toast(t('ai_need_input')); return; }
+    if (openBeerFromText(text)) return;
     const r = smartParseRecipe(text);
     if (!r.stats.ingredients && (!r.stats.steps || text.split(/\s+/).length < 8)) { toast(t('paste_nothing')); return; }
     popPage();
@@ -1786,6 +1831,7 @@ function openPasteImport(ai = false) {
   if (aiBtn) aiBtn.onclick = async () => {
     const text = box.value.trim();
     if (!text && !images.length) { toast(t('ai_need_input')); return; }
+    if (openBeerFromText(text)) return;   // a Brewer's Friend export needs no AI at all
     if (!sb || auth.mode !== 'user') { toast(t('paste_ai_login')); return; }
     aiBtn.disabled = true; const label = aiBtn.textContent; aiBtn.textContent = t('paste_ai_working');
     try {
@@ -1898,8 +1944,28 @@ function bindEvents() {
   document.addEventListener('click', async e => {
     // click on the dimmed backdrop (desktop) — but not when a text selection started inside a field and ended outside it
     if (e.target.id === 'pages-root') { if (downOnBackdrop) popPage(); return; }
+    const modeBtn = e.target.closest('.mode-switch [data-mode]');
+    if (modeBtn) {
+      if (settings.mode !== modeBtn.dataset.mode) {
+        settings.mode = modeBtn.dataset.mode; saveSettings(); applyMode();
+        state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; state.query = ''; compose(); renderTab(); window.scrollTo(0, 0);
+      }
+      return;
+    }
     const tm = e.target.closest('[data-timer],[data-timer-set]');
     if (tm) { handleTimerClick(tm); return; }
+    const bt = e.target.closest('[data-batch],[data-batch-mult]');
+    if (bt) {
+      const page = bt.closest('.page'), rr = byId(page.querySelector('.detail').dataset.id), base = (rr.beer && rr.beer.batchL) || 20;
+      const cur = Number(page.dataset.servings) || base;
+      let next = cur;
+      if (bt.dataset.batch === 'reset') next = base;
+      else if (bt.dataset.batch) next = cur + Number(bt.dataset.batch);
+      else next = Math.round(cur * Number(bt.dataset.batchMult));
+      next = Math.max(1, Math.min(500, next));
+      refreshDetail(rr, next === base ? null : next);
+      return;
+    }
     const sv = e.target.closest('[data-serv],[data-serv-mult]');
     if (sv) {
       const page = sv.closest('.page'), rr = byId(page.querySelector('.detail').dataset.id), base = baseServings(rr);
@@ -2020,6 +2086,7 @@ function bindEvents() {
         break;
       }
       case 'roulette': openRoulette(); break;
+      case 'brewday': if (r) openBrewDay(r.id); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
       case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; renderTab(); break;
@@ -2324,12 +2391,14 @@ function playAlarmSound(loop) {
     chime(); if (loop) fallbackTimer = setInterval(chime, 3200);
   });
 }
-function ring() {
-  if (timer.ringing) return;
+function ring() { ringWith(t('timer_done')); }
+function ringWith(label) {
+  if (timer.ringing) { bcQueue.push(label); return; }
+
   timer.ringing = true;
   playAlarmSound(true);
   vibrateAlarm(); ringTimer = setInterval(vibrateAlarm, 3400);
-  $('#alarm-root').innerHTML = `<div class="alarm"><div class="alarm-card"><div class="alarm-bell">⏰</div><h2>${esc(t('timer_done'))}</h2>
+  $('#alarm-root').innerHTML = `<div class="alarm"><div class="alarm-card"><div class="alarm-bell">⏰</div><h2>${esc(label)}</h2>
     <button class="btn primary" data-timer="stop">${esc(t('timer_stop'))}</button></div></div>`;
   renderTimer();
 }
@@ -2346,6 +2415,7 @@ function stopAlarm() {
   if (alarmAudio) { alarmAudio.pause(); alarmAudio.currentTime = 0; alarmAudio.loop = true; }
   const a = $('#alarm-root'); if (a) a.innerHTML = '';
   try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
+  if (bcQueue.length) { const next = bcQueue.shift(); setTimeout(() => ringWith(next), 400); }   // another alarm was waiting (brew day)
 }
 function startTimer(ms) {
   unlockAudio();
@@ -2595,12 +2665,12 @@ async function promptLogin() {
 
 /* ---------------- Boot ---------------- */
 (async function boot() {
-  applyAppearance();
+  applyAppearance(); applyMode();
   bindEvents();
   captureInviteFromUrl();
   bindAuthEvents();
   bindChatEvents();
-  initTimer();
+  initTimer(); bcInit();
   try { await initCloud(); await loadData(); }
   catch (e) {
     $('#tabs-root').innerHTML = `<div class="view"><div class="empty"><div class="big">⚠️</div><h3>Error</h3><p>${esc(e.message || e)}</p></div></div>`;
