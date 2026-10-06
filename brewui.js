@@ -72,7 +72,15 @@ const beerText = r => {
 // Steps in order; "at" (minutes after the boil starts) makes a step part of the boil schedule, "min" gives it a timer.
 function brewPlan(r) {
   const b = r.beer, S = [];
-  const wv = k => (b.water || []).find(w => w.key === k)?.L;
+  const kgAll = (b.fermentables || []).reduce((s, f) => s + (f.kg || 0), 0);
+  const wv = k => {   // volumes from the import when there are some, otherwise worked out from the recipe
+    const w = (b.water || []).find(x => x.key === k)?.L;
+    if (w != null) return w;
+    if (k === 'strike') return kgAll ? kgAll * (b.thickness || 3) : undefined;
+    if (k === 'sparge') return kgAll && b.boilL ? Math.max(0, b.boilL - (kgAll * (b.thickness || 3) - kgAll)) : undefined;
+    if (k === 'preBoil') return b.boilL || undefined;
+    return undefined;
+  };
   const add = (phase, text, o = {}) => S.push(Object.assign({ phase, text, id: 's' + S.length }, o));
   const hopsBy = use => (b.hops || []).filter(h => h.use === use);
   const names = hs => hs.map(h => `${bg_(h.g)} ${h.name}`).join(', ');

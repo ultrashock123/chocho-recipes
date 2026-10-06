@@ -33,13 +33,17 @@ function beerCategories(styleName, title, yeastName) {
 /* ---------------- Ingredient reference data (typical values; every number can be edited per recipe) ---------------- */
 // ppg = potential in "points per pound per gallon", lov = colour in °Lovibond, sugar = fully fermentable (100% efficiency)
 const MALTS = [
+  { re: /ch[aâ]teau\s*pale/i, ppg: 38, lov: 3.4, n: 'Château Pale Ale' },
+  { re: /ch[aâ]teau\s*pilsen/i, ppg: 38, lov: 1.9, n: 'Château Pilsen 2RS' },
+  { re: /ch[aâ]teau\s*cara\s*gold/i, ppg: 34, lov: 38, n: 'Château Cara Gold' },
+  { re: /ch[aâ]teau\s*munich/i, ppg: 37, lov: 20, n: 'Château Munich' },
   { re: /cara\s?pils|carapils|dextrin|caramel pils/i, ppg: 33, lov: 2, n: 'Carapils' },
   { re: /cara\s?clair|caramel\s?hell|cara\s?hell|carahell/i, ppg: 35, lov: 3.2, n: 'Cara Clair' },
   { re: /cara\s?gold/i, ppg: 34, lov: 25, n: 'Cara Gold' },
   { re: /cara\s?munich\s*(iii|3)/i, ppg: 34, lov: 57, n: 'CaraMunich III' },
   { re: /cara\s?munich\s*(ii|2)/i, ppg: 34, lov: 46, n: 'CaraMunich II' },
-  { re: /cara\s?munich/i, ppg: 34, lov: 35, n: 'CaraMunich I' },
-  { re: /cara\s?amber|caramel\s?amber/i, ppg: 34, lov: 27, n: 'CaraAmber' },
+  { re: /cara\s?munich/i, ppg: 34, lov: 39, n: 'CaraMunich I' },
+  { re: /cara\s?amber|caramel\s?amber/i, ppg: 34, lov: 23, n: 'CaraAmber' },
   { re: /cara\s?aroma/i, ppg: 34, lov: 130, n: 'CaraAroma' },
   { re: /cara\s?red/i, ppg: 34, lov: 20, n: 'CaraRed' },
   { re: /crystal\s*(\d+)|caramel\s*(\d+)|cara\s*(\d+)/i, ppg: 34, lov: 40, n: 'Crystal 40', num: true },
@@ -65,8 +69,8 @@ const MALTS = [
   { re: /rice(?! hull)/i, ppg: 32, lov: 1, n: 'Flaked Rice' },
   { re: /wheat/i, ppg: 37, lov: 2, n: 'Wheat Malt' },
   { re: /rye/i, ppg: 35, lov: 3, n: 'Rye Malt' },
-  { re: /pilsen|pilsner|pils\b/i, ppg: 37, lov: 1.7, n: 'Pilsner' },
-  { re: /pale ale|ale malt|maris|golden promise|2-?row|two-?row|pale/i, ppg: 37, lov: 3, n: 'Pale Ale' },
+  { re: /pilsen|pilsner|pils\b/i, ppg: 38, lov: 1.7, n: 'Pilsner' },
+  { re: /pale ale|ale malt|maris|golden promise|2-?row|two-?row|pale/i, ppg: 39, lov: 2.3, n: 'Pale Ale' },
   { re: /lager/i, ppg: 37, lov: 2, n: 'Lager Malt' },
   { re: /dextrose|glucose|corn sugar/i, ppg: 46, lov: 0, n: 'Dextrose', sugar: true },
   { re: /sugar|sucrose|захар/i, ppg: 46, lov: 0, n: 'Table Sugar', sugar: true },
@@ -143,7 +147,7 @@ function hopIBU(h, b, boilSG) {
   switch (h.use) {
     case 'boil': return mgL * big * btf(h.min || 0);
     case 'first wort': return mgL * big * btf(b.boilMin || 60) * 1.1;
-    case 'whirlpool': return mgL * big * 0.02675 * clamp(((h.temp ?? 80) - 60) / 20, 0, 2);
+    case 'whirlpool': { const T = h.temp ?? 80; return mgL * Math.max(0, 0.028 * (1 + (T - 80) * 0.018) + 0.0002 * (h.min || 0)); }   // fixed utilisation by temperature (as Brewer's Friend reports), not by gravity
     case 'mash': return mgL * big * btf(60) * 0.2;
     default: return 0;   // dry hop: no bitterness counted
   }
@@ -165,7 +169,12 @@ function calcBeer(b) {
   const abv = (og - fg) * 131.25;
   const srm = mcu > 0 ? 1.4922 * Math.pow(mcu / gal, 0.6859) : 0;
   const pre = b.boilL || postBoilVolume(b);
-  const boilSG = 1 + (ogPts * postBoilVolume(b) / (pre || 1)) / 1000;
+  // Gravity at the start of the boil. When water is added after the boil (top-off) the wort was more concentrated than the
+  // final OG: all the points of the batch sit in the pre-boil volume. Otherwise the points are spread over the post-boil volume.
+  const losses = (b.water || []).filter(w => w.key === 'kettleLoss' || w.key === 'misc').reduce((s, w) => s + Math.abs(w.L || 0), 0);
+  const topOff = Math.max(0, batch - (postBoilVolume(b) - losses));
+  const boilPts = topOff > 0.5 ? ogPts * batch / (pre || 1) : ogPts * postBoilVolume(b) / (pre || 1);
+  const boilSG = 1 + boilPts / 1000;
   let ibu = 0; const perHop = [];
   for (const h of b.hops || []) { const v = hopIBU(h, b, boilSG); perHop.push(v); ibu += v; }
   return { og, fg, ogP: sg2p(og), fgP: sg2p(fg), abv, ibu, srm, ebc: srm * 1.97, boilSG, boilP: sg2p(boilSG), perHop };
@@ -183,7 +192,7 @@ function strikeTemp(targetC, thicknessLkg, grainC) { return (0.41 / (thicknessLk
 // Priming: grams of sugar for a target CO₂ volume (residual CO₂ depends on the highest fermentation temperature)
 function primingSugarG(batchL, volumes, fermC, sugar = 'sucrose') {
   const f = fermC * 9 / 5 + 32, residual = 3.0378 - 0.050062 * f + 0.00026555 * f * f;
-  const perL = Math.max(0, volumes - residual) * (sugar === 'dextrose' ? 4.45 : 3.85);
+  const perL = Math.max(0, volumes - residual) * (sugar === 'dextrose' ? 4.0 : 3.81);
   return { grams: perL * batchL, residual };
 }
 // Keg pressure (bar) for a target CO₂ volume at a serving temperature (°C)

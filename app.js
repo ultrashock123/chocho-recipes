@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.22.0';
+const APP_VERSION = '1.22.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -1423,7 +1423,7 @@ function openEditor(existing, prefill = null) {
       if (d.kind === 'beer') {
         if (!d.categories.length) d.categories = beerCategories(d.beer.styleName, d.title, d.beer.yeast && d.beer.yeast.name);
         d.ingredients = beerIngredientLines(d.beer);
-        if (d._beerDirty || !d.beer.stats) delete d.beer.stats;   // an edited recipe shows calculated numbers again
+        if (d._beerDirty || !d.beer.stats) { delete d.beer.stats; if (d._beerDirty) { d.beer.water = []; d.beer.postBoilL = null; } }   // an edited recipe shows calculated numbers and volumes again
         delete d._beerDirty;
       } else if (!d.categories.length) d.categories = ['other'];
       const r = existing || { id: uid('r'), createdAt: Date.now(), favorite: false, source: null, seed: false,
