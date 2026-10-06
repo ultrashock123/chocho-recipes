@@ -172,7 +172,8 @@ Deno.serve(async req => {
     const m = raw.replace(/```(?:json)?/gi, '').match(/\{[\s\S]*\}/);
     if (!m) {
       console.error('no json in answer', raw.slice(0, 300));
-      return json({ error: 'ai_failed', detail: 'no json: ' + raw.slice(0, 120) }, 502);
+      // the AI answered in words: it found no recipe in the source (do not count it)
+      return json({ error: 'no_recipe', detail: raw.slice(0, 120) }, 422);
     }
     let rec;
     try { rec = JSON.parse(m[0]); }
