@@ -148,12 +148,24 @@ Deno.serve(async req => {
         { type: 'text', text: text || 'The recipe is in the image(s).' },
       ] }] }),
     });
-    if (!r.ok) return json({ error: 'ai_failed', status: r.status }, 502);
+    if (!r.ok) {
+      const why = (await r.text()).slice(0, 300);
+      console.error('anthropic error', r.status, why);
+      return json({ error: 'ai_failed', status: r.status, detail: why }, 502);
+    }
     const out = await r.json();
     const raw: string = out?.content?.[0]?.text || '';
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (!m) return json({ error: 'ai_failed' }, 502);
-    const rec = JSON.parse(m[0]);
+    const m = raw.replace(/```(?:json)?/gi, '').match(/\{[\s\S]*\}/);
+    if (!m) {
+      console.error('no json in answer', raw.slice(0, 300));
+      return json({ error: 'ai_failed', detail: 'no json: ' + raw.slice(0, 120) }, 502);
+    }
+    let rec;
+    try { rec = JSON.parse(m[0]); }
+    catch (e) {
+      console.error('bad json', String(e), m[0].slice(0, 300));
+      return json({ error: 'ai_failed', detail: 'bad json (' + (out?.stop_reason || '') + ')' }, 502);
+    }
 
     // nothing that looks like a recipe (e.g. a video without a recipe in its description): do not count it
     if (!Array.isArray(rec.ingredients) || !rec.ingredients.length) {
@@ -174,7 +186,8 @@ Deno.serve(async req => {
       categories: Array.isArray(rec.categories) ? rec.categories.map(String).slice(0, 2) : [],
       left: unlimited ? null : Math.max(0, LIMIT - used - 1),
     });
-  } catch (_e) {
-    return json({ error: 'ai_failed' }, 500);
+  } catch (e) {
+    console.error('function error', String(e));
+    return json({ error: 'ai_failed', detail: String(e).slice(0, 160) }, 500);
   }
 });

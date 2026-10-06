@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.21.0';
+const APP_VERSION = '1.21.1';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -358,12 +358,12 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const uid = (p = 'r') => p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} };
 
-function toast(msg) {
+function toast(msg, ms = 2200) {
   const el = $('#toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove('show'), 2200);
+  toast._t = setTimeout(() => el.classList.remove('show'), ms);
 }
 
 /* ---------------- Settings ---------------- */
@@ -1793,6 +1793,7 @@ function openPasteImport(ai = false) {
         if (!body && error && error.context && error.context.json) { try { body = await error.context.json(); } catch (e) {} }
         const e2 = new Error((body && body.error) || 'ai_failed');
         e2.status = body && body.status;   // the answer of the AI service, when it refused
+        e2.detail = body && body.detail;
         throw e2;
       }
       aiBtn.textContent = t('paste_ai_saving');
@@ -1812,7 +1813,7 @@ function openPasteImport(ai = false) {
       aiBtn.disabled = false; aiBtn.textContent = label;
       const why = { 400: 'paste_ai_why_400', 401: 'paste_ai_why_401', 403: 'paste_ai_why_401', 404: 'paste_ai_why_404', 429: 'paste_ai_why_429', 529: 'paste_ai_why_529' }[err.status];
       toast(err.message === 'limit' ? t('paste_ai_limit') : err.message === 'not_configured' ? t('paste_ai_why_401') : err.message === 'fetch_failed' ? t('paste_ai_fetch') : err.message === 'no_recipe' ? t('paste_ai_norecipe')
-        : t('paste_ai_err') + (err.status ? ' (' + err.status + ')' : '') + (why ? ' ' + t(why) : ''), 6000);
+        : t('paste_ai_err') + (err.status ? ' (' + err.status + ')' : '') + (why ? ' ' + t(why) : '') + (err.detail ? ' [' + String(err.detail).slice(0, 140) + ']' : ''), 8000);
     }
   };
   setTimeout(() => box.focus(), 350);
