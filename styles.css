@@ -847,3 +847,5 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .brow .rm svg { width: 14px; height: 14px; }
 .bstats-live { position: sticky; top: calc(var(--safe-top) + 52px); z-index: 4; background: var(--bg); padding-top: 2px; }
 @media (max-width: 380px) { .bstats { gap: 4px; } .bstat b { font-size: .92rem; } }
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-text small { font-size: .66rem; font-weight: 600; color: var(--text-2); letter-spacing: 0; margin-top: 2px; }

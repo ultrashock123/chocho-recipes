@@ -1,7 +1,7 @@
 {
   "name": "Rifay Umami",
   "short_name": "Rifay Umami",
-  "description": "Rifay Umami — книга с рецепти",
+  "description": "Rifay Umami — кулинарни рецепти и домашна бира",
   "lang": "bg",
   "start_url": "./",
   "scope": "./",

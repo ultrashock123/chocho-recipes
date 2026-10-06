@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.23.0';
+const APP_VERSION = '1.24.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -87,7 +87,7 @@ const I18N = {
     ai_bad_code: 'Грешен AI код за достъп', ai_not_configured: 'AI още не е настроен на сървъра (липсва API ключ).',
     ai_need_input: 'Напиши нещо или добави снимка', ai_section: 'AI помощник', ai_code: 'Код за достъп до AI',
     ai_code_hint: 'Кодът се задава в Netlify (APP_ACCESS_CODE). Пази бюджета ти — без него AI функциите не работят.',
-    auth_tagline: 'Книга с рецепти — твоите и на другите', auth_signin: 'Вход', auth_signup: 'Регистрация',
+    slogan: 'Кулинарни рецепти и домашна бира', auth_tagline: 'Кулинарни рецепти и домашна бира', auth_signin: 'Вход', auth_signup: 'Регистрация',
     auth_google: 'Продължи с Google', auth_facebook: 'Продължи с Facebook', auth_or_email: 'или с имейл',
     auth_email: 'Имейл', auth_password: 'Парола', auth_password_new: 'Парола (поне 6 символа)',
     auth_no_account: 'Нямаш акаунт? Регистрирай се', auth_have_account: 'Вече имаш акаунт? Влез',
@@ -234,7 +234,7 @@ const I18N = {
     ai_bad_code: 'Wrong AI access code', ai_not_configured: 'AI is not set up on the server yet (missing API key).',
     ai_need_input: 'Write something or add a photo', ai_section: 'AI assistant', ai_code: 'AI access code',
     ai_code_hint: 'The code is set in Netlify (APP_ACCESS_CODE). It protects your budget — AI features need it.',
-    auth_tagline: 'A recipe book — yours and everyone’s', auth_signin: 'Sign in', auth_signup: 'Sign up',
+    slogan: 'Food recipes & beer', auth_tagline: 'Food recipes & beer', auth_signin: 'Sign in', auth_signup: 'Sign up',
     auth_google: 'Continue with Google', auth_facebook: 'Continue with Facebook', auth_or_email: 'or with email',
     auth_email: 'Email', auth_password: 'Password', auth_password_new: 'Password (min. 6 characters)',
     auth_no_account: 'No account? Sign up', auth_have_account: 'Already have an account? Sign in',
@@ -799,7 +799,7 @@ function avatarHTML() {
   if (name) return `<span class="avatar">${esc(name.charAt(0).toUpperCase())}</span>`;
   return `<span class="avatar avatar-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4.1-6 7.5-6s6.3 2 7.5 6"/></svg></span>`;
 }
-const brandHTML = () => `<div class="brand"><img src="icons/logo.svg" alt="" class="brand-mark"><span>Rifay <b>Umami</b></span></div>`;
+const brandHTML = () => `<div class="brand"><img src="icons/logo.svg" alt="" class="brand-mark"><div class="brand-text"><span>Rifay <b>Umami</b></span><small>${esc(t('slogan'))}</small></div></div>`;
 
 /* ---------------- Tabs ---------------- */
 function renderTab() {
@@ -2698,6 +2698,7 @@ async function promptLogin() {
   renderTab();
   // First visit (or after signing out): ask to sign in. "Continue as guest" is remembered.
   loadInviteInfo();
+  setTimeout(askStartMode, 1500);
   if (auth.mode === 'guest' && (!guestChosen() || pendingInvite())) openAuth({ view: pendingInvite() ? 'signup' : 'signin', dismissible: !!guestChosen() && !pendingInvite() });
   // Pick up recipes other people published while the app was in the background.
   let hiddenAt = 0;
@@ -2709,3 +2710,17 @@ async function promptLogin() {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();
+
+/* ---------------- First start: what will the app be used for? ---------------- */
+async function askStartMode(tries = 0) {
+  if (settings.startModeAsked) return;
+  if ($('#auth-root').firstChild || $('#sheet-root').firstChild || state.pages.length) {   // wait until the sign-in screen is gone
+    if (tries < 40) setTimeout(() => askStartMode(tries + 1), 2000);
+    return;
+  }
+  settings.startModeAsked = true; saveSettings();   // asked once, whatever the answer
+  const v = await actionSheet(t('start_mode'), [{ label: t('mode_cook'), value: 'cook' }, { label: t('mode_brew'), value: 'brew' }]);
+  if (!v) return;
+  settings.startMode = v; settings.mode = v; saveSettings(); applyMode();
+  state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; state.query = ''; compose(); renderTab();
+}
