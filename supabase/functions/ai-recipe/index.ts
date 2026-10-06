@@ -28,6 +28,40 @@ JSON fields:
 - "time": total time like "45 мин" or "1 ч 30 мин", or "".
 - "categories": up to 2 of: chicken, pork, beef, pasta, fish, rice, bread, pizza, dessert, sauce, salad, meze, veggie, eggs, drinks, other.`;
 
+// A YouTube link: returns the video id ('' for any other link).
+function youtubeId(link: string): string {
+  try {
+    const u = new URL(link);
+    const h = u.hostname.replace(/^www\.|^m\./, '');
+    if (h === 'youtu.be') return u.pathname.slice(1).split('/')[0].slice(0, 11);
+    if (h === 'youtube.com' || h === 'music.youtube.com') {
+      if (u.pathname === '/watch') return (u.searchParams.get('v') || '').slice(0, 11);
+      const m = u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/);
+      if (m) return m[1];
+    }
+  } catch (_e) { /* not a link */ }
+  return '';
+}
+// Title, channel and the description of a YouTube video (that is where cooks usually write the recipe).
+async function youtubeText(id: string): Promise<string> {
+  try {
+    const res = await fetch(`https://www.youtube.com/watch?v=${id}`, {
+      headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        'accept-language': 'bg,en;q=0.8', cookie: 'CONSENT=YES+1; SOCS=CAI' },
+      signal: AbortSignal.timeout(10000),
+    });
+    const html = (await res.text()).slice(0, 2_500_000);
+    const pick = (re: RegExp) => { const m = html.match(re); if (!m) return ''; try { return JSON.parse(`"${m[1]}"`); } catch (_e) { return m[1]; } };
+    const title = pick(/"title":"((?:[^"\\]|\\.)*)"/) || pick(/<meta name="title" content="([^"]*)"/);
+    const channel = pick(/"ownerChannelName":"((?:[^"\\]|\\.)*)"/);
+    const desc = pick(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
+    if (!desc && !title) return '';
+    return `YouTube video\nTitle: ${title}\nChannel: ${channel}\nDescription:\n${desc}`.slice(0, MAX_CHARS);
+  } catch (_e) {
+    return '';
+  }
+}
+
 // Downloads one public web page and returns its readable text ('' when it cannot be opened). Local/private addresses are refused.
 async function pageText(link: string): Promise<string> {
   try {
@@ -81,8 +115,9 @@ Deno.serve(async req => {
     // Only a link was pasted: open that one page and use its text (the AI itself cannot open links).
     let sourceUrl = '';
     if (/^https?:\/\/\S+$/i.test(text)) {
-      sourceUrl = text;
-      const page = await pageText(text);
+      const yt = youtubeId(text);
+      sourceUrl = yt ? `https://www.youtube.com/watch?v=${yt}` : text;   // a video link is cleaned of playlist parameters
+      const page = yt ? await youtubeText(yt) : await pageText(text);
       if (!page) return json({ error: 'fetch_failed' }, 422);
       text = page;
     }
@@ -106,6 +141,11 @@ Deno.serve(async req => {
     const m = raw.match(/\{[\s\S]*\}/);
     if (!m) return json({ error: 'ai_failed' }, 502);
     const rec = JSON.parse(m[0]);
+
+    // nothing that looks like a recipe (e.g. a video without a recipe in its description): do not count it
+    if (!Array.isArray(rec.ingredients) || !rec.ingredients.length) {
+      if (!Array.isArray(rec.steps) || !rec.steps.length) return json({ error: 'no_recipe' }, 422);
+    }
 
     await admin.from('ai_usage').upsert({ user_id: u.user.id, day, n: (today?.n ?? 0) + 1 });
     return json({
