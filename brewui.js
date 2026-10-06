@@ -406,7 +406,7 @@ function beerPlanPreview(r) {
 function beerDetailHTML(r, tabSel = 'ing', batch = null) {
   const b0 = r.beer || {}, base = b0.batchL || 20, target = Math.min(500, Math.max(1, batch || base)), k = target / base;
   const b = scaleBeer(b0, k);
-  const imgs = r.images || [];
+  const imgs = galleryImages(r);
   const cats = (r.categories || []).map(c => `<span class="pill">${CAT[c]?.emoji || ''} ${esc(catName(c))}</span>`).join('');
   const stats = beerStats(b0);
   const batchBar = `<div class="serv-bar"><span>🛢 Обем на варката</span>

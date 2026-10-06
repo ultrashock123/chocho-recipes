@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.22.1';
+const APP_VERSION = '1.22.2';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -761,7 +761,7 @@ function placeholder(r) {
   return `<div class="ph" style="--h:${c.h}"><span>${c.emoji}</span></div>`;
 }
 function card(r) {
-  const cover = (r.images || [])[0];
+  const cover = coverRef(r);
   const c = CAT[(r.categories || [])[0]] || CAT.other;
   return `<button class="card" data-open="${esc(r.id)}">
     <div class="thumb">${cover ? imgTag(cover) : placeholder(r)}
@@ -1106,7 +1106,7 @@ function cookBarHTML() {
 
 function detailHTML(r, tabSel = 'ing', serv = null) {
   if (isBeer(r)) return beerDetailHTML(r, tabSel, serv);
-  const imgs = r.images || [];
+  const imgs = galleryImages(r);
   const cats = (r.categories || []).map(c => `<span class="pill">${CAT[c]?.emoji || ''} ${esc(catName(c))}</span>`).join('');
   const hasIng = (r.ingredients || []).length > 0;
   const steps = String(r.steps || '').trim();
@@ -1194,6 +1194,14 @@ function youtubeInfo(url) {
   return { id, start };
 }
 const otherLinks = r => (r.links || []).filter(l => !youtubeInfo(l.url));
+// The photo shown for a recipe: its own first photo, otherwise the thumbnail of its YouTube video.
+function coverRef(r) {
+  const own = (r.images || [])[0];
+  if (own) return own;
+  const v = (r.links || []).map(l => youtubeInfo(l.url)).find(Boolean);
+  return v ? `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg` : '';
+}
+const galleryImages = r => ((r.images || []).length ? r.images : coverRef(r) ? [coverRef(r)] : []);
 function videosHTML(r) {
   const vids = (r.links || []).map(l => youtubeInfo(l.url)).filter(Boolean);
   if (!vids.length) return '';
@@ -1612,7 +1620,7 @@ function openRoulette() {
       const r = items[indexAt(target)];
       ticker.textContent = '';
       el.querySelector('#rl-spin').disabled = false;
-      const cover = (r.images || [])[0];
+      const cover = coverRef(r);
       result.innerHTML = `<div class="win-card">
         <div class="win-label">🎉 ${esc(t('roulette_win'))}</div>
         <div class="win-thumb">${cover ? imgTag(cover, '', false) : placeholder(r)}</div>
