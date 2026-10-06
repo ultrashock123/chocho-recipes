@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.19.1';
+const APP_VERSION = '1.20.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -555,6 +555,7 @@ let incoming = {}; // recipes sent to me: { recipeId: { from } }
 let friends = [];  // my quick list of people to send recipes to
 let removed = new Set(); // originals the admin removed for everybody
 let isAdmin = false;
+let overrides = {};   // administrator's corrections to the original recipes: { id: { title, ingredients, … } }
 let hiddenCount = 0;
 let ratingStats = {}; // public totals: { 'recipe:id' | 'user:id': { avg, count } }
 let myRatings = {};   // my votes: { 'recipe:id' | 'user:id': 1..5 }
@@ -597,6 +598,8 @@ async function loadUserData() {
     // Optional parts: they exist only after the v1.5 database update, so failures are not fatal.
     try { removed = new Set(await cloud.removedList()); await DB.put('kv', [...removed], 'removed'); }
     catch (e) { removed = new Set((await DB.get('kv', 'removed')) || []); }
+    try { overrides = await cloud.overridesList(); await DB.put('kv', overrides, 'overrides'); }
+    catch (e) { overrides = (await DB.get('kv', 'overrides')) || {}; }
     if (auth.mode === 'user') {
       await applyPendingInvite();
       incoming = await cloud.incoming().catch(() => ({}));
@@ -626,7 +629,7 @@ async function reloadAll() {
 function compose() {
   // An original the user replaced with their own edited version is hidden for them.
   const replaced = new Set(custom.filter(r => r.basedOn && isMine(r)).map(r => r.basedOn));
-  const all = [...seeds.filter(s => !replaced.has(s.id) && !removed.has(s.id)), ...custom];
+  const all = [...seeds.filter(s => !replaced.has(s.id) && !removed.has(s.id)).map(s => overrides[s.id] ? Object.assign({}, s, overrides[s.id]) : s), ...custom];
   const visible = [];
   hiddenCount = 0;
   all.forEach(r => {
@@ -679,6 +682,10 @@ async function migrateLegacy() {
 
 async function saveRecipe(r) {
   r.updatedAt = Date.now();
+  if (r.seed && isAdmin && auth.mode === 'user') {   // an original recipe: the correction applies for everybody
+    const data = {}; RECIPE_FIELDS.forEach(k => { data[k] = r[k]; });
+    await cloud.saveOverride(r.id, data); overrides[r.id] = data; compose(); return;
+  }
   await backend().save(r);
   const i = custom.findIndex(x => x.id === r.id);
   if (i >= 0) custom[i] = r; else custom.push(r);
@@ -1065,6 +1072,7 @@ async function setWakeLock(on) {
   } catch (e) { wakeLock = null; }
 }
 
+const canEdit = r => isMine(r) || (auth.mode === 'user' && isAdmin);   // an administrator may edit every recipe
 const canSend = r => auth.mode === 'user' && (r.seed || r.visibility !== 'private' || isMine(r));
 const cookLabel = r => r.cooked > 0 ? t('cooked_n', r.cooked) : r.tried ? t('tried') : t('cooked_btn');
 
@@ -2061,9 +2069,11 @@ function bindEvents() {
       }
       case 'recipe-menu': {
         const mine = isMine(r);
-        const opts = mine ? [{ label: '✏️ ' + t('edit'), value: 'edit' }] : r.seed
+        const opts = canEdit(r) ? [{ label: '✏️ ' + t('edit'), value: 'edit' }] : r.seed
           ? [{ label: '✏️ ' + t('edit_mine'), value: 'fork' }]
           : [{ label: '📋 ' + t('copy_mine'), value: 'copy' }];
+        if (!mine && canEdit(r)) opts.push(r.seed
+          ? { label: '👤 ' + t('edit_mine'), value: 'fork' } : { label: '📋 ' + t('copy_mine'), value: 'copy' });   // admin can still make a personal copy
         if (mine && auth.mode === 'user') {
           opts.push({ label: '📤 ' + t('share_menu'), value: 'share' });
           opts.push(r.visibility === 'private'
@@ -2209,6 +2219,7 @@ function confirmCaptcha(title, message, confirmLabel) {
 function deleteKind(r) {
   if (isMine(r)) return 'delete';
   if (r.seed && isAdmin) return 'global';
+  if (!r.seed && isAdmin && auth.mode === 'user') return 'delete';
   return 'hide';
 }
 async function deleteFlow(r) {

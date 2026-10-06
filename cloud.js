@@ -114,6 +114,13 @@ const cloud = {
   async save(r) {
     const data = {};
     RECIPE_FIELDS.forEach(k => { data[k] = r[k]; });
+    if (r.owner && r.owner !== auth.user.id) {   // an administrator editing somebody else's recipe: update in place, the owner stays
+      const { error } = await sb.from('recipes').update({
+        visibility: r.visibility || 'public', data, updated_at: new Date().toISOString(),
+      }).eq('id', r.id);
+      if (error) throw error;
+      return;
+    }
     const { error } = await sb.from('recipes').upsert({
       id: r.id, owner_id: auth.user.id, visibility: r.visibility || 'public', based_on: r.basedOn || null,
       data, created_at: new Date(r.createdAt || Date.now()).toISOString(), updated_at: new Date().toISOString(),
@@ -121,7 +128,9 @@ const cloud = {
     if (error) throw error;
   },
   async remove(r) {
-    const { error } = await sb.from('recipes').delete().eq('id', r.id).eq('owner_id', auth.user.id);
+    let q = sb.from('recipes').delete().eq('id', r.id);
+    if (!r.owner || r.owner === auth.user.id) q = q.eq('owner_id', auth.user.id);   // otherwise an administrator deleting it
+    const { error } = await q;
     if (error) throw error;
     const paths = (r.images || []).map(photoPath).filter(p => p && p.startsWith(auth.user.id + '/'));
     if (paths.length) { try { await sb.storage.from(BUCKET).remove(paths); } catch (e) {} }
@@ -186,6 +195,16 @@ const cloud = {
     const { data, error } = await sb.from('removed_recipes').select('recipe_id');
     if (error) throw error;
     return (data || []).map(r => r.recipe_id);
+  },
+  // Administrator's corrections to the original recipes (recipes.json): they apply for everybody.
+  async overridesList() {
+    const { data, error } = await sb.from('recipe_overrides').select('recipe_id,data');
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(x => [x.recipe_id, x.data]));
+  },
+  async saveOverride(id, data) {
+    const { error } = await sb.from('recipe_overrides').upsert({ recipe_id: id, data, updated_by: auth.user.id, updated_at: new Date().toISOString() });
+    if (error) throw error;
   },
   async isAdmin() {
     const { data, error } = await sb.from('app_admins').select('user_id').eq('user_id', auth.user.id).maybeSingle();
