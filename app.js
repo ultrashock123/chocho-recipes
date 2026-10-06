@@ -1,7 +1,7 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.14.2';
+const APP_VERSION = '1.15.0';
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings'];
@@ -115,6 +115,7 @@ const I18N = {
     paste_hint: 'Копирай рецептата от сайт, съобщение или документ и я постави тук — цялата, заедно със съставките и приготвянето. Приложението само ще ги подреди.',
     paste_ph: 'Необходими съставки:\n10 бр. сушени чушки\n1 чаена чаша булгур\n…\n\nРецептата:\n1. Заливате чушките с вряла вода…\n2. …',
     paste_free: 'Работи в телефона ти, безплатно и без интернет услуги. Накрая ще видиш готовата рецепта и ще можеш да поправиш каквото искаш, преди да я запазиш.',
+    paste_ai: '✨ Подреди с AI', paste_ai_working: 'AI подрежда рецептата…', paste_ai_err: 'AI не успя. Опитай пак или ползвай безплатното преработване.', paste_ai_limit: 'Дневният лимит за AI е изчерпан. Опитай утре или ползвай безплатното.', paste_ai_login: 'AI е само за влезли потребители.', paste_ai_hint: 'Безплатното е за добре подредени рецепти. „Подреди с AI“ е за цели страници с излишни неща (струва около 2 стотинки).',
     paste_nothing: 'Не открих съставки или приготвяне. Опитай с по-пълен текст.', paste_clip_err: 'Не мога да чета клипборда — натисни и задръж в полето и избери „Постави“.',
     paste_done: (a, b) => `Готово: ${a} продукта, ${b} ${b === 1 ? 'стъпка' : 'стъпки'}. Прегледай и запази.`,
     invite_title: 'Покани приятели', invite_short: 'Покани', invite_intro: 'Изпрати лична връзка на приятелите си. Който се регистрира през нея, става твой приятел автоматично и можете веднага да си пишете.',
@@ -260,6 +261,7 @@ const I18N = {
     paste_hint: 'Copy a recipe from a website, message or document and paste it here — the whole thing, ingredients and method. The app will just tidy it up.',
     paste_ph: 'Ingredients:\n10 dried peppers\n1 cup bulgur\n…\n\nMethod:\n1. Pour boiling water over the peppers…\n2. …',
     paste_free: 'Runs on your phone, free, with no online service. You will see the finished recipe and can fix anything before saving.',
+    paste_ai: '✨ Tidy up with AI', paste_ai_working: 'AI is tidying the recipe…', paste_ai_err: 'AI failed. Try again or use the free conversion.', paste_ai_limit: 'Daily AI limit reached. Try tomorrow or use the free one.', paste_ai_login: 'AI is for signed-in users only.', paste_ai_hint: 'The free one is for well-formatted recipes. "Tidy up with AI" is for whole web pages with extra junk (costs about 1 cent).',
     paste_nothing: 'No ingredients or method found. Try with a fuller text.', paste_clip_err: 'Cannot read the clipboard — long-press in the box and choose “Paste”.',
     paste_done: (a, b) => `Done: ${a} ingredients, ${b} step${b === 1 ? '' : 's'}. Review and save.`,
     invite_title: 'Invite friends', invite_short: 'Invite', invite_intro: 'Send your personal link to friends. Whoever registers through it becomes your friend automatically and you can write to each other right away.',
@@ -1664,8 +1666,10 @@ function openPasteImport() {
       <div style="display:grid;gap:10px;margin-top:16px">
         <button class="btn" id="paste-clip">📋 ${esc(t('paste_from_clip'))}</button>
         <button class="btn primary ai-go" id="paste-go">⚙️ ${esc(t('paste_go'))}</button>
+        ${auth.mode === 'user' ? `<button class="btn" id="paste-ai">${esc(t('paste_ai'))}</button>` : ''}
       </div>
       <p class="hint" style="margin-top:12px">${esc(t('paste_free'))}</p>
+      ${auth.mode === 'user' ? `<p class="hint">${esc(t('paste_ai_hint'))}</p>` : ''}
     </div>`, { modal: true });
   const box = $('#paste-text', el);
   $('#paste-clip', el).onclick = async () => {
@@ -1684,6 +1688,32 @@ function openPasteImport() {
       });
       toast(t('paste_done', r.stats.ingredients, r.stats.steps));
     }, 280);
+  };
+  const aiBtn = $('#paste-ai', el);
+  if (aiBtn) aiBtn.onclick = async () => {
+    const text = box.value.trim();
+    if (!text) { toast(t('ai_need_input')); return; }
+    if (!sb || auth.mode !== 'user') { toast(t('paste_ai_login')); return; }
+    aiBtn.disabled = true; const label = aiBtn.textContent; aiBtn.textContent = t('paste_ai_working');
+    try {
+      const { data, error } = await sb.functions.invoke('ai-recipe', { body: { text } });
+      if (error || !data || data.error) {
+        let code = data && data.error;
+        if (!code && error && error.context && error.context.json) { try { code = (await error.context.json()).error; } catch (e) {} }
+        throw new Error(code || 'ai_failed');
+      }
+      popPage();
+      setTimeout(() => {
+        openEditor(null, {
+          title: data.title, ingredients: data.ingredients, steps: data.steps.join('\n\n'), notes: data.notes,
+          categories: (data.categories || []).filter(c => CAT[c]), servings: data.servings, time: data.time, links: [],
+        });
+        toast(t('paste_done', data.ingredients.filter(x => !x.startsWith('## ')).length, data.steps.length));
+      }, 280);
+    } catch (err) {
+      aiBtn.disabled = false; aiBtn.textContent = label;
+      toast(t(err.message === 'limit' ? 'paste_ai_limit' : 'paste_ai_err'));
+    }
   };
   setTimeout(() => box.focus(), 350);
 }
