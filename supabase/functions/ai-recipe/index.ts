@@ -114,19 +114,21 @@ async function ebagText(u: URL): Promise<string> {
 }
 
 // Downloads one public web page and returns its readable text ('' when it cannot be opened). Local/private addresses are refused.
-async function pageText(link: string): Promise<string> {
+async function pageText(link: string): Promise<{ text: string; image: string }> {
+  const none = { text: '', image: '' };
   try {
     const u = new URL(link);
     const h = u.hostname.toLowerCase();
     if (!/^https?:$/.test(u.protocol) || h === 'localhost' || h.endsWith('.local') || h.endsWith('.internal')
-      || /^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h.includes(':') || !h.includes('.')) return '';
-    if (/(^|\.)ebag\.bg$/.test(h)) { const e = await ebagText(u); if (e) return e; }
+      || /^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h.includes(':') || !h.includes('.')) return none;
+    if (/(^|\.)ebag\.bg$/.test(h)) { const e = await ebagText(u); if (e) return { text: e, image: '' }; }
     const res = await fetch(u.toString(), {
       headers: { 'user-agent': 'Mozilla/5.0 (compatible; RifayUmami/1.0)', accept: 'text/html,application/xhtml+xml' },
       redirect: 'follow', signal: AbortSignal.timeout(10000),
     });
-    if (!res.ok || !(res.headers.get('content-type') || '').includes('html')) return '';
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('html')) return none;
     let html = (await res.text()).slice(0, 1_500_000);
+    let image = '';   // the main picture of the page (og:image) — shown as the recipe photo
     // The page head often holds what the visible text lacks: title, description (e.g. "recipe by chef …") and structured Recipe data.
     const decode = (s: string) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
     const head: string[] = [];
@@ -137,7 +139,9 @@ async function pageText(link: string): Promise<string> {
       const name = (tag.match(/(?:name|property)=["']([^"']+)["']/i) || [])[1] || '';
       const content = (tag.match(/content=["']([^"']*)["']/i) || [])[1] || '';
       if (content && /^(description|og:title|og:description|twitter:description|author|article:author)$/i.test(name)) head.push(`${name}: ${decode(content)}`);
+      if (!image && content && /^(og:image|og:image:secure_url|twitter:image)$/i.test(name)) image = decode(content);
     }
+    try { image = image ? new URL(image, u).toString() : ''; if (!/^https:\/\//.test(image)) image = ''; } catch (_e) { image = ''; }
     for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) head.push('Structured data: ' + m[1].trim().slice(0, 8000));
     html = html.replace(/<(script|style|noscript|svg|nav|header|footer|form)[\s\S]*?<\/\1>/gi, ' ')
       .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6]|tr|section|article)>/gi, '\n')
@@ -145,9 +149,9 @@ async function pageText(link: string): Promise<string> {
       .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
       .replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
     const all = (head.join('\n') + '\n\n' + html).trim();
-    return html.length > 40 || head.length > 1 ? all.slice(0, MAX_CHARS) : '';
+    return { text: html.length > 40 || head.length > 1 ? all.slice(0, MAX_CHARS) : '', image };
   } catch (_e) {
-    return '';
+    return none;
   }
 }
 
@@ -178,13 +182,14 @@ Deno.serve(async req => {
 
     let text = String(body.text || '').slice(0, MAX_CHARS).trim();
     // Only a link was pasted: open that one page and use its text (the AI itself cannot open links).
-    let sourceUrl = '';
+    let sourceUrl = '', pageImage = '';
     if (/^https?:\/\/\S+$/i.test(text)) {
       const yt = youtubeId(text);
       sourceUrl = yt ? `https://www.youtube.com/watch?v=${yt}` : text;   // a video link is cleaned of playlist parameters
-      const page = yt ? await youtubeText(yt) : await pageText(text);
-      if (!page) return json({ error: 'fetch_failed' }, 422);
-      text = page;
+      const got = yt ? { text: await youtubeText(yt), image: '' } : await pageText(text);
+      if (!got.text) return json({ error: 'fetch_failed' }, 422);
+      text = got.text;
+      pageImage = got.image;
     }
     const images = (Array.isArray(body.images) ? body.images : []).slice(0, 3)
       .filter((i: { media_type?: string; data?: string }) => i && ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(i.media_type || '') && typeof i.data === 'string' && i.data.length < 3_000_000);
@@ -236,6 +241,7 @@ Deno.serve(async req => {
       author: String(rec.author || ''),
       book: String(rec.book || ''),
       url: sourceUrl,
+      image: pageImage,
       categories: Array.isArray(rec.categories) ? rec.categories.map(String).slice(0, 2) : [],
       left: unlimited ? null : Math.max(0, LIMIT - used - 1),
     });

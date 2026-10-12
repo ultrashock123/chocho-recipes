@@ -1,8 +1,8 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.26.0';
-const APP_BUILT = '06.10.2026 20:30';   // updated with every release: shown top right so a new version is easy to recognise
+const APP_VERSION = '1.27.0';
+const APP_BUILT = '12.10.2026 15:53';   // updated with every release: shown top right so a new version is easy to recognise
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -1020,7 +1020,8 @@ function settingsView() {
     </div>
     <p class="hint">${esc(t('storage_hint'))}</p>` : ''}
     ${auth.mode === 'user' && isAdmin ? `<div class="group-label">🛡 ${esc(t('admin_section'))}</div><div class="group"><button class="row row-btn" data-action="admin-users"><span class="lbl"><span class="ic" style="background:#6C5CE7">👥</span>${esc(t('admin_users'))}</span><span class="val">${esc(t('admin_users_sub'))}</span></button>
-      <button class="row row-btn" data-action="admin-reports"><span class="lbl"><span class="ic" style="background:#E0393E">🚩</span>Доклади</span></button></div>` : ''}
+      <button class="row row-btn" data-action="admin-reports"><span class="lbl"><span class="ic" style="background:#E0393E">🚩</span>Доклади</span></button>
+      <button class="row row-btn" data-action="admin-incomplete"><span class="lbl"><span class="ic" style="background:#F2A33C">⚠️</span>Непълни рецепти</span></button></div>` : ''}
     ${hiddenCount ? `<div class="group-label">${esc(t('hidden_title'))}</div><div class="group"><button class="row row-btn" data-action="restore-hidden"><span class="lbl"><span class="ic" style="background:#2FA36B">↺</span>${esc(t('restore_hidden'))} (${hiddenCount})</span></button></div>` : ''}
     ${auth.mode === 'user' ? `<div class="group-label">${esc(t('account'))}</div>
     <div class="group">
@@ -1869,6 +1870,7 @@ function openPasteImport(ai = false) {
       for (const im of images) { try { refs.push(await storePhoto(im.blob, 1600)); } catch (err) { /* the recipe is still created */ } }
       const yv = data.url ? youtubeInfo(data.url) : null;
       if (yv && !refs.length) refs.push(ytThumb(yv.id));   // a YouTube link: the video's thumbnail becomes the recipe photo
+      else if (!refs.length && /^https:\/\//.test(data.image || '')) refs.push(data.image);   // a web page: its main picture (og:image) becomes the recipe photo
       popPage();
       setTimeout(() => {
         openEditor(null, {
@@ -2116,6 +2118,7 @@ function bindEvents() {
       case 'blocked-list': openBlockedPage(); break;
       case 'delete-account': deleteAccountFlow(); break;
       case 'admin-reports': openAdminReports(); break;
+      case 'admin-incomplete': openIncomplete(); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
       case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; renderTab(); break;
@@ -2160,6 +2163,7 @@ function bindEvents() {
         page.classList.toggle('cook-mode', on);
         a.classList.toggle('on', on);
         setWakeLock(on); renderTimer();
+        if (on) page.querySelector('[data-dtab="method"]')?.click();   // cooking starts on the "Приготвяне" tab
         toast(t(on ? 'cook_on' : 'cook_off'));
         break;
       }

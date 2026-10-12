@@ -109,3 +109,26 @@ async function openAdminReports() {
   });
   load();
 }
+
+/* ---------------- Incomplete recipes (administrator): no ingredients or no method ---------------- */
+function incompleteRecipes() {
+  const realIng = r => (r.ingredients || []).filter(x => !x.startsWith('## ') && x.trim()).length;
+  const food = state.all.filter(r => !isBeer(r));
+  const beers = state.all.filter(isBeer);
+  return {
+    noIng: food.filter(r => realIng(r) === 0 && String(r.steps || '').trim()),
+    noSteps: food.filter(r => realIng(r) > 0 && !String(r.steps || '').trim()),
+    empty: food.filter(r => realIng(r) === 0 && !String(r.steps || '').trim()),
+    beer: beers.filter(r => !(r.beer && (r.beer.fermentables || []).length)),
+  };
+}
+function openIncomplete() {
+  const inc = incompleteRecipes();
+  const sec = (title, list, hint) => !list.length ? '' : `<div class="group-label">${esc(title)} · ${list.length}</div>${hint ? `<p class="hint">${esc(hint)}</p>` : ''}
+    <div class="group">${list.map(r => `<button class="row row-btn" data-open="${esc(r.id)}"><span class="lbl">${esc(r.title)}</span><span class="val">${r.seed ? 'оригинална' : esc(r.ownerName || '')}</span></button>`).join('')}</div>`;
+  const total = inc.noIng.length + inc.noSteps.length + inc.empty.length + inc.beer.length;
+  pushPage(`<div class="navbar"><button class="nav-btn" data-action="back">${esc(t('close'))}</button><h1>⚠️ Непълни рецепти</h1><span style="width:60px"></span></div>
+    <div class="form">${total ? '' : '<div class="empty"><div class="big">✅</div><p>Всички рецепти имат продукти и приготвяне.</p></div>'}
+    ${sec('Без продукти', inc.noIng, 'Продуктите са описани само в приготвянето, затова не се оразмеряват по порции.')}
+    ${sec('Без приготвяне', inc.noSteps)}${sec('Празни (без продукти и без приготвяне)', inc.empty)}${sec('Бири без състав', inc.beer)}</div>`, { modal: true });
+}
