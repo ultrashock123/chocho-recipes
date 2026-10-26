@@ -1,8 +1,8 @@
 /* Rifay Umami — recipe book (PWA, no build step). */
 'use strict';
 
-const APP_VERSION = '1.27.2';
-const APP_BUILT = '12.10.2026 16:12';   // updated with every release: shown top right so a new version is easy to recognise
+const APP_VERSION = '1.28.0';
+const APP_BUILT = '26.10.2026 16:38';   // updated with every release: shown top right so a new version is easy to recognise
 const SITE_AUTHOR = 'Chocho Rifay'; // author of the original recipes (recipes.json)
 // Fields of a recipe that are stored (locally or in the cloud). Favorite/tried live in per-user "states".
 const RECIPE_FIELDS = ['title', 'collection', 'categories', 'source', 'ingredients', 'steps', 'notes', 'links', 'images', 'time', 'servings', 'kind', 'beer'];
@@ -1034,6 +1034,7 @@ function settingsView() {
     <p class="hint">${esc(t('cloud_hint'))}</p>
     <div class="group" style="margin-top:18px"><button class="row row-btn" data-action="delete-account" style="color:var(--danger)"><span class="lbl"><span class="ic" style="background:#E0393E">🗑</span>Изтрий акаунта и данните ми</span></button></div>
     <p class="hint">Изтрива завинаги акаунта, рецептите, снимките и съобщенията ти.</p>` : ''}
+    <div class="group" style="margin-top:18px"><button class="row row-btn" data-action="install-guide"><span class="lbl"><span class="ic" style="background:#3A7BF2">📲</span>Добави като приложение на телефона</span></button></div>
     <p class="footer-note">👨‍🍳 ${esc(t('about'))} ${APP_VERSION}<br>${esc(t('install_hint'))}<br><a href="privacy.html" target="_blank" rel="noopener">${esc(t('privacy'))}</a> · <a href="terms.html" target="_blank" rel="noopener">Условия</a> · <a href="delete-data.html" target="_blank" rel="noopener">${esc(t('delete_data'))}</a></p>
   </section>`;
 }
@@ -2119,6 +2120,7 @@ function bindEvents() {
       case 'delete-account': deleteAccountFlow(); break;
       case 'admin-reports': openAdminReports(); break;
       case 'admin-incomplete': openIncomplete(); break;
+      case 'install-guide': showInstall(true); break;
       case 'back': popPage(); break;
       case 'clear-q': state.query = ''; renderTab(); $('#q')?.focus(); break;
       case 'clear-filters': state.query = ''; state.cat = null; state.coll = null; state.chef = null; state.scope = 'all'; renderTab(); break;
@@ -2719,6 +2721,7 @@ async function promptLogin() {
   // First visit (or after signing out): ask to sign in. "Continue as guest" is remembered.
   loadInviteInfo();
   setTimeout(askStartMode, 1500);
+  setTimeout(maybeShowInstall, 4000);
   if (auth.mode === 'guest' && (!guestChosen() || pendingInvite())) openAuth({ view: pendingInvite() ? 'signup' : 'signin', dismissible: !!guestChosen() && !pendingInvite() });
   // Pick up recipes other people published while the app was in the background.
   let hiddenAt = 0;
